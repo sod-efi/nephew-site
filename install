@@ -6,7 +6,7 @@
 # Nothing else is written. No sudo. Fails closed on any mismatch.
 set -eu
 
-VERSION="0.4.0"
+VERSION="0.4.1"
 TARBALL="nephew-v${VERSION}.tar.gz"
 BASE="${NEPHEW_INSTALL_BASE:-https://nephew.ai/releases}"
 APP_DIR="${NEPHEW_HOME:-$HOME/.local/lib/nephew}"
@@ -62,4 +62,8 @@ chmod +x "${BIN_DIR}/nephew"
 echo "installed   nephew v${VERSION} -> ${BIN_DIR}/nephew"
 echo "verified    sha256 ${ACTUAL}"
 echo "yours       app + profiles live under ${APP_DIR} and your bundle dir — no nephew server holds them"
-echo "next step:  nephew run --help"
+case ":${PATH}:" in
+  *":${BIN_DIR}:"*) ;;
+  *) echo "path        ${BIN_DIR} is not on your PATH yet — add it:  export PATH=\"${BIN_DIR}:\$PATH\"" ;;
+esac
+echo "next step:  nephew init"

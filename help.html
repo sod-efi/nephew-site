@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nephew — help</title>
+<meta name="description" content="Nephew help: install, what you bring, how it works, signed run receipts, trust facts, compatibility, measured proof, plain limits, surfaces, and plans.">
+<style>
+  body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; margin: 2rem auto; max-width: 46rem; padding: 0 1rem; line-height: 1.55; color: #111; }
+  h1 { font-size: 1.6rem; margin-bottom: .2rem; }
+  h2 { font-size: 1.05rem; margin-top: 2.2rem; border-bottom: 1px solid #ddd; padding-bottom: .3rem; scroll-margin-top: 1rem; }
+  pre { background: #f4f4f4; padding: .8rem 1rem; overflow-x: auto; border-radius: 6px; }
+  table { border-collapse: collapse; margin: 1rem 0; }
+  th, td { text-align: left; padding: .3rem .8rem .3rem 0; vertical-align: top; }
+  th { border-bottom: 1px solid #ddd; }
+  .tag { color: #555; margin-top: 0; }
+  .pillars { color: #333; letter-spacing: .08em; }
+  .head { color: #555; border-bottom: 1px solid #ddd; padding-bottom: .6rem; margin-bottom: 1.8rem; }
+  nav.toc { background: #f4f4f4; border-radius: 6px; padding: .8rem 1rem; margin: 1.6rem 0 2rem; }
+  nav.toc p { margin: 0 0 .4rem; }
+  nav.toc ol { margin: 0; padding-left: 1.4rem; }
+  nav.toc li { margin: .15rem 0; }
+  footer { margin-top: 3rem; color: #666; font-size: .85rem; }
+</style>
+</head>
+<body>
+
+<header class="head">Nephew — Help</header>
+
+<!-- Hero / intro -->
+<h1>nephew</h1>
+<p class="tag">Your logged-in identity, in any agent sandbox.</p>
+<p class="pillars">PORTABLE · CONTINUOUS · YOURS</p>
+
+<p>
+Nephew is the <strong>profile layer</strong> for the sandbox providers you already use.
+It carries one logged-in browser identity — cookies, session state, a coherent
+fingerprint, and a pinned egress IP — <em>into</em> Modal, Steel, Browser Use, and Browserbase.
+It is not another sandbox, and it does not replace them: your jobs still run on
+your provider, under your account. Nephew is the identity they run <em>as</em>.
+</p>
+
+<nav class="toc">
+<p><strong>Contents</strong></p>
+<ol>
+  <li><a href="#start-here">Start here</a></li>
+  <li><a href="#what-you-bring">What you bring</a></li>
+  <li><a href="#how-it-works">How it works</a></li>
+  <li><a href="#run-receipts">Signed run receipts</a></li>
+  <li><a href="#trust-facts">Trust facts</a></li>
+  <li><a href="#compatibility">Compatibility</a></li>
+  <li><a href="#measured-proof">Measured proof</a></li>
+  <li><a href="#plain-limits">Plain limits</a></li>
+  <li><a href="#surfaces">Surfaces</a></li>
+  <li><a href="#plans">Plans</a></li>
+</ol>
+</nav>
+
+<!-- Start here -->
+<h2 id="start-here">Start here</h2>
+<pre>curl -fsSL https://nephew.ai/install | sh
+
+nephew init                 # connect your own provider accounts
+nephew capture              # sign in once, in your own browser
+nephew run &lt;job&gt; --provider modal|steel|browseruse|browserbase
+nephew run &lt;job&gt; --provider steel --handoff   # if challenged, take over live
+nephew receipt verify &lt;file&gt;                 # verify a signed run receipt</pre>
+<p>Every run opens with a three-line trust receipt — the profile, the fingerprint
+it must match, and the egress it must come from:</p>
+<pre>profile     modal-proxy-20261030 · owner-held bundle · loaded from your vault
+fingerprint 2ef43e20ca · seed 1000 · windows/Chrome
+egress      brightdata-zone-isp_proxy3 · pinned</pre>
+
+<!-- What you bring -->
+<h2 id="what-you-bring">What you bring</h2>
+<ul>
+  <li><strong>Your own provider accounts and keys</strong> — a Modal token pair, a Steel API key, a Browser Use API key, a Browserbase API key. Nephew runs on your accounts; your provider billing stays yours.</li>
+  <li><strong>Your own Bright Data zone</strong> — the dedicated IP your identity egresses from, pinned in the profile recipe.</li>
+  <li><strong>Node.js 22 or newer</strong> on the machine you run the CLI from.</li>
+</ul>
+<p>There is no Nephew account to create and no Nephew cloud in the middle.</p>
+<p>The keys the CLI reads from your environment:</p>
+<pre>PROFILE_ENCRYPTION_KEY  bundle decryption key (capture + live runs)
+MODAL_TOKEN_ID / MODAL_TOKEN_SECRET  Modal connection (provider: modal)
+STEEL_API_KEY / BROWSER_USE_API_KEY / BRIGHTDATA_API_KEY  provider keys (nephew init checks them)</pre>
+
+<!-- How it works -->
+<h2 id="how-it-works">How it works</h2>
+<ol>
+  <li><strong>Capture once.</strong> Sign in once; the session is sealed into an encrypted bundle you hold — profile state, fingerprint recipe, pinned proxy reference. Keys never leave your machine.
+<pre>nephew capture [--name &lt;id&gt;] [--human &lt;who&gt;] [--bundle &lt;dir&gt;] [--sites &lt;url,url&gt;] [--seed &lt;n&gt;]</pre></li>
+  <li><strong>Run anywhere.</strong> <code>nephew run</code> starts your provider sandbox, measures the live browser, and checks it against the recipe. The fingerprint gate must accept <em>before</em> any state is released — on mismatch, the run refuses.
+<pre>nephew run &lt;job&gt; --provider steel|browseruse|modal|browserbase [--dry-run] [--bundle &lt;dir&gt;] [--handoff [--handoff-ttl &lt;seconds&gt;] [--handoff-port &lt;n&gt;]]</pre></li>
+  <li><strong>Challenged? Hand off, live.</strong> If a site challenges the run, it pauses with <code>LOGIN_REQUIRED</code>. On Steel, Browser Use, and Browserbase the run can hold its live session instead of closing it: the profile's designated human opens a local page, watches the session stream live, and fixes the login in place with their own mouse and keyboard. One controller, a per-handoff token, and a hard deadline (6 minutes by default) that late arrival cannot extend. Hand control back and the fixed session is captured into the same bundle; end the run and nothing is captured. Modal cannot attach a live handoff yet — its browser runs inside the sandbox with no host-side session to lend — so a Modal run that needs a login returns the plain pause.</li>
+  <li><strong>Capture back.</strong> When the job ends, the live session is sealed back into the same bundle. One identity, no forks — the next run, on any provider, continues where the last one stopped.</li>
+</ol>
+
+<!-- Run receipts -->
+<h2 id="run-receipts">Signed run receipts</h2>
+<p>A run leaves a signed record: profile, run, provider, the fingerprint hashes it
+measured, the egress it observed, start and end times, the outcome, how many
+minutes of human attention it took, and whether a handoff was used. The receipt
+is signed with your own Ed25519 key — the same key that signs
+<code>nephew revoke</code>'s deletion receipt — and stored in
+<code>~/.nephew/receipts/</code>. Anyone you hand it to can verify it against
+your public key:</p>
+<pre>nephew receipt verify &lt;file&gt;   # PASS, or FAIL naming the field that changed</pre>
+<p>That is the compliance shape of the product: a run's record that a third
+party can check without trusting us, because there is no Nephew server in the
+middle to trust.</p>
+
+<!-- Trust facts -->
+<h2 id="trust-facts">Trust facts, for the curl&nbsp;|&nbsp;sh skeptic</h2>
+<ul>
+  <li>The installer writes exactly two things: the app to <code>~/.local/lib/nephew</code> and a launcher to <code>~/.local/bin/nephew</code>. No sudo, nothing else.</li>
+  <li>The download is verified against the published <a href="/releases/SHA256SUMS">SHA256SUMS</a> before anything is installed; a mismatch aborts the install.</li>
+  <li>Your keys live on your machine only — environment variables and your own provider configs. No Nephew server exists, and no server ever holds your profile.</li>
+  <li><code>nephew revoke</code> destroys a bundle and its key material, and leaves an Ed25519-signed deletion receipt you can verify independently.</li>
+  <li>A handoff writes an event record of counts and identifiers only — frames relayed, inputs forwarded, outcome. No frames, no keystrokes, no page content, no token.</li>
+</ul>
+<pre>nephew revoke [--bundle &lt;dir&gt;] [--key-file &lt;file&gt;] [--receipt &lt;file&gt;]</pre>
+
+<!-- Compatibility -->
+<h2 id="compatibility">Compatibility</h2>
+<p>Today: <strong>Modal</strong>, <strong>Steel</strong>, <strong>Browser Use</strong>, <strong>Browserbase</strong> — the same
+bundle, the same gate, all four. On Browserbase the bundle is the only state a
+session sees: Nephew never uses Browserbase Contexts (their provider-native
+persistent profiles), and sessions are created with your API key alone — no
+project id, no stored profile on their side.</p>
+
+<!-- Measured proof -->
+<h2 id="measured-proof">Measured proof</h2>
+<ul>
+  <li>Same profile, this machine vs a Modal sandbox: <strong>identical fingerprints — all 10 measured elements, canvas included</strong> — with the pinned font pack in both environments.</li>
+  <li>Pinned egress, verified live: a Modal run egressed from <strong>the profile's own dedicated IP, exactly as pinned in its recipe</strong>. The gate checked the egress before releasing state and accepted, and the session was restored. The address itself is carried in the run's own metrics record — your runs produce the same record for your IPs.</li>
+  <li>Baseline restores: <strong>~6.4 s</strong> on Steel, <strong>~7.8 s</strong> on Browser Use, <strong>~5.7 s</strong> on Browserbase; full Modal runs <strong>10–27 s</strong> in-session.</li>
+  <li><strong>0 login prompts, 0 MFA prompts</strong> across the Steel, Browser Use, Modal, and Browserbase proof runs.</li>
+</ul>
+
+<!-- Plain limits -->
+<h2 id="plain-limits">Plain limits</h2>
+<ul>
+  <li>A site can still challenge a run. When it does, the run pauses with <code>LOGIN_REQUIRED</code>; the live handoff above is the recovery on Steel, Browser Use, and Browserbase, and on Modal the recovery is still re-capture and retry.</li>
+  <li>Browserbase sessions: the 5-minute timeout shown in a project's settings is the default when no timeout is requested. Nephew requests an explicit session window (1 hour) — measured granted in full, including a probe at the 21,600-second API maximum.</li>
+  <li>One dedicated IP per identity, per-profile by design.</li>
+  <li>A handoff is one designated human, one controller, on a loopback page — and it ends at its deadline whether the login is fixed or not.</li>
+  <li>No "works on every site" claims. Above are the runs we actually measured; yours are measured the same way, and every run writes its own metrics record.</li>
+</ul>
+
+<!-- Surfaces -->
+<h2 id="surfaces">Surfaces</h2>
+<p>The <code>nephew</code> CLI (<code>init</code> · <code>capture</code> ·
+<code>run</code> · <code>revoke</code> · <code>receipt verify</code>), an MCP server (<code>nephew mcp</code>)
+exposing the <code>profile_run</code> tool with the same gate, a structured
+<code>LOGIN_REQUIRED</code> pause result, and — on Steel, Browser Use, and Browserbase — the
+live handoff handle routed with it, and a TypeScript helper
+(<code>withProfile</code>) that wraps a job function in a carried identity —
+Steel, Browser Use, and Browserbase today; Modal runs through the CLI. A Python decorator
+(<code>with_profile</code>, in the <code>nephew</code> Python package) wraps a
+Python job the same way, over the same gate and the same signed run receipts.</p>
+<p>Start the MCP server (stdio):</p>
+<pre>nephew mcp</pre>
+<p>A <code>profile_run</code> call:</p>
+<pre>{ "tool": "profile_run",
+  "args": { "job": "nightly-recon", "provider": "steel", "bundle": "/path/to/bundle" } }</pre>
+<p>The TypeScript helper:</p>
+<pre>import { withProfile } from "./src/with-profile.ts";
+await withProfile(bundleDir, "steel", async ({ cdp, sessionId }) =&gt; {
+  // already logged in as the owner — no login code in this file
+});</pre>
+<p>The Python decorator:</p>
+<pre>from nephew import with_profile
+from playwright.sync_api import sync_playwright
+
+with with_profile(bundle="/path/to/bundle", provider="steel") as session:
+    with sync_playwright() as pw:
+        browser = pw.chromium.connect_over_cdp(session.cdp_url)
+        # already logged in as the owner — no login code here</pre>
+<p>Reading this as an agent? The machine-readable twin of this page is
+<a href="/llms.txt">/llms.txt</a>, and the structured manifest is
+<a href="/nephew.json">/nephew.json</a>.</p>
+
+<!-- Plans (pricing copy carried over unchanged) -->
+<h2 id="plans">Plans</h2>
+<p><strong>Your login, your device identity, your IP — in any agent run.</strong></p>
+<table>
+  <tr><th>Free</th><td>$0</td><td>2 profiles, BYO mode · 1 hosted run-hour trial · concurrency 1</td></tr>
+  <tr><th>BYO</th><td>$19/mo</td><td>10 profiles on your own Modal, Steel, Browser Use, Browserbase or Bright Data accounts · unlimited run-hours — you pay your providers directly · extra profiles $3/mo · concurrency 3</td></tr>
+  <tr><th>Hosted</th><td>$59/mo</td><td>5 profiles, each with its own dedicated ISP IP · 30 run-hours included, then $0.60/run-hour · concurrency 3</td></tr>
+  <tr><th>Hosted Team</th><td>$199/mo</td><td>20 profiles with dedicated ISP IPs · 200 run-hours included, then $0.50/run-hour · profile sharing, priority support · concurrency 10</td></tr>
+  <tr><th>Enterprise</th><td>Custom</td><td>Unlimited profiles · own-stack / BYOC deploy, SSO, custom regions, SLA</td></tr>
+</table>
+<p>You pay for <em>profiles</em> — identities you own and can revoke or take
+elsewhere — and for <em>run-hours</em>, the time an agent spends logged in as
+you. No per-seat fees. We never store your keys.</p>
+
+<footer><a href="/">← nephew</a> · nephew — Portable · Continuous · Yours</footer>
+
+</body>
+</html>

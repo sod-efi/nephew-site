@@ -1,0 +1,65 @@
+#!/bin/sh
+# nephew installer — fetches the release tarball, verifies its sha256
+# against the published SHA256SUMS, and installs:
+#   app payload  -> ${NEPHEW_HOME:-~/.local/lib/nephew}
+#   launcher     -> ${NEPHEW_INSTALL_DIR:-~/.local/bin}/nephew
+# Nothing else is written. No sudo. Fails closed on any mismatch.
+set -eu
+
+VERSION="0.4.0"
+TARBALL="nephew-v${VERSION}.tar.gz"
+BASE="${NEPHEW_INSTALL_BASE:-https://nephew.ai/releases}"
+APP_DIR="${NEPHEW_HOME:-$HOME/.local/lib/nephew}"
+BIN_DIR="${NEPHEW_INSTALL_DIR:-$HOME/.local/bin}"
+
+# The CLI is TypeScript executed by Node's type stripping: Node >= 22.
+if ! command -v node >/dev/null 2>&1; then
+  echo "nephew: Node.js >= 22 is required but was not found on PATH" >&2
+  exit 1
+fi
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+if [ "$NODE_MAJOR" -lt 22 ]; then
+  echo "nephew: Node.js >= 22 is required (found $(node --version))" >&2
+  exit 1
+fi
+
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT INT TERM
+
+echo "downloading ${BASE}/${TARBALL}"
+curl -fsSL "${BASE}/${TARBALL}" -o "${WORK}/${TARBALL}"
+curl -fsSL "${BASE}/SHA256SUMS" -o "${WORK}/SHA256SUMS"
+
+EXPECTED="$(awk -v t="${TARBALL}" '$2 == t {print $1}' "${WORK}/SHA256SUMS")"
+if [ -z "${EXPECTED}" ]; then
+  echo "nephew: SHA256SUMS has no entry for ${TARBALL} — refusing to install" >&2
+  exit 1
+fi
+if command -v sha256sum >/dev/null 2>&1; then
+  ACTUAL="$(sha256sum "${WORK}/${TARBALL}" | awk '{print $1}')"
+else
+  ACTUAL="$(shasum -a 256 "${WORK}/${TARBALL}" | awk '{print $1}')"
+fi
+if [ "${ACTUAL}" != "${EXPECTED}" ]; then
+  echo "nephew: sha256 mismatch for ${TARBALL} — refusing to install" >&2
+  echo "  expected ${EXPECTED}" >&2
+  echo "  got      ${ACTUAL}" >&2
+  exit 1
+fi
+
+mkdir -p "${WORK}/x"
+tar -xzf "${WORK}/${TARBALL}" -C "${WORK}/x"
+rm -rf "${APP_DIR}"
+mkdir -p "$(dirname "${APP_DIR}")" "${BIN_DIR}"
+mv "${WORK}/x/nephew-${VERSION}" "${APP_DIR}"
+
+cat > "${BIN_DIR}/nephew" <<EOF
+#!/bin/sh
+exec node "${APP_DIR}/bin/nephew.js" "\$@"
+EOF
+chmod +x "${BIN_DIR}/nephew"
+
+echo "installed   nephew v${VERSION} -> ${BIN_DIR}/nephew"
+echo "verified    sha256 ${ACTUAL}"
+echo "yours       app + profiles live under ${APP_DIR} and your bundle dir — no nephew server holds them"
+echo "next step:  nephew run --help"

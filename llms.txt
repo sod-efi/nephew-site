@@ -1,0 +1,168 @@
+# nephew
+
+> Your logged-in identity, in any agent sandbox. Portable · Continuous · Yours.
+
+Nephew is the profile layer for the sandbox providers you already use. It
+carries one logged-in browser identity — cookies, session state, a coherent
+fingerprint, and a pinned egress IP — into Modal, Steel, Browser Use, and
+Browserbase. It
+is not another sandbox and does not replace them: jobs still run on the
+user's provider, under the user's account. Nephew is the identity they run
+as. There is no Nephew account to create and no Nephew cloud in the middle;
+no Nephew server exists, and no server ever holds a profile.
+
+## What the user brings
+
+- Their own provider accounts and keys: a Modal token pair, a Steel API
+  key, a Browser Use API key, a Browserbase API key. Nephew runs on the
+  user's accounts; provider billing stays the user's.
+- Their own Bright Data zone: the dedicated IP the identity egresses from,
+  pinned in the profile recipe.
+- Node.js 22 or newer on the machine running the CLI.
+- Keys live on the user's machine only (environment variables and the
+  user's own provider configs). Nephew never stores the user's keys.
+
+## Install
+
+curl -fsSL https://nephew.ai/install | sh
+
+The installer writes exactly two things: the app to ~/.local/lib/nephew and
+a launcher to ~/.local/bin/nephew. No sudo, nothing else. The download is
+verified against the published SHA256SUMS
+(https://nephew.ai/releases/SHA256SUMS) before anything is installed; a
+mismatch aborts the install.
+
+## Commands (the nephew CLI)
+
+- nephew init — connect the user's own provider accounts
+- nephew capture — sign in once, in the user's own browser; the session is
+  sealed into an encrypted bundle the user holds
+- nephew run <job> --provider modal|steel|browseruse|browserbase — run a
+  job as the carried identity
+- nephew run <job> --provider steel --handoff (also browseruse and
+  browserbase) — if the run is challenged, hold the live session for a
+  streamed human handoff
+- nephew revoke — destroy a bundle and its key material; leaves an
+  Ed25519-signed deletion receipt the user can verify independently
+- nephew receipt verify <file> — verify a signed run receipt (PASS, or
+  FAIL naming the field that changed)
+- nephew mcp — MCP server exposing the profile_run tool
+
+## How it works
+
+1. Capture once. Sign in once; the session is sealed into an encrypted
+   bundle the user holds — profile state, fingerprint recipe, pinned proxy
+   reference. Keys never leave the user's machine.
+2. Run anywhere. `nephew run` starts the provider sandbox, measures the
+   live browser, and checks it against the recipe. The fingerprint gate
+   must accept before any state is released — on mismatch, the run
+   refuses. Every run opens with a three-line trust receipt: the profile,
+   the fingerprint it must match, and the egress it must come from.
+3. Challenged: live handoff. If a site challenges the run, it pauses with
+   LOGIN_REQUIRED. On Steel, Browser Use, and Browserbase the run can
+   hold its live session instead of closing it: the profile's designated human opens a
+   local (loopback-only) page, watches the session stream live, and fixes
+   the login in place with their own mouse and keyboard. Rules: one
+   handoff at a time, one controller, a per-handoff token bound to the
+   bundle's designated human, and a hard deadline (default 360 s) computed
+   on a monotonic clock — late arrival, reloads, reconnects, and
+   wall-clock changes cannot extend it. Hand control back (resume) and
+   the fixed session is captured into the same bundle; end the run or let
+   the deadline expire and nothing is captured. Modal cannot attach a
+   live handoff yet: its browser runs inside the sandbox with no
+   host-side session to lend, so a Modal run that needs a login returns
+   the plain LOGIN_REQUIRED pause.
+4. Capture back. When the job ends, the live session is sealed back into
+   the same bundle. One identity, no forks — the next run, on any
+   provider, continues where the last one stopped.
+
+## Signed run receipts
+
+A run leaves a signed record: profile, run, provider, the fingerprint
+hashes it measured, the egress it observed, start and end times, the
+outcome, how many minutes of human attention it took, and whether a
+handoff was used. The receipt is signed with the user's own Ed25519 key —
+the same key that signs the deletion receipt — and stored in
+~/.nephew/receipts/. Anyone can verify it against the owner's public key
+with `nephew receipt verify <file>`; verification returns PASS, or FAIL
+naming the field that changed. A handoff writes its own event record of
+counts and identifiers only (frames relayed, inputs forwarded, outcome) —
+no frames, no keystrokes, no page content, no token.
+
+## Surfaces
+
+- CLI: init, capture, run, revoke, receipt verify
+- MCP server: `nephew mcp`, tool `profile_run` — same fingerprint gate, a
+  structured LOGIN_REQUIRED pause result, and on Steel, Browser Use, and
+  Browserbase the live handoff handle routed with the pause
+- TypeScript helper: `withProfile` wraps a job function in a carried
+  identity — Steel, Browser Use, and Browserbase today; Modal runs
+  through the CLI
+- Python decorator: `with_profile` in the `nephew` Python package wraps a
+  Python job function (or a `with` block) in the same carried identity —
+  same gate, same signed run receipts; Steel, Browser Use, and
+  Browserbase today; Modal runs through the CLI
+- Help page: https://nephew.ai/help.html
+
+## Compatibility
+
+Today: Modal, Steel, Browser Use, Browserbase — the same bundle, the
+same gate, all four. On Browserbase the bundle is the only state a
+session sees: Nephew never uses Browserbase Contexts (their
+provider-native persistent profiles), and sessions are created with
+your API key alone — no project id, no stored profile on their side.
+
+## Measured proof
+
+- Same profile, the owner's machine vs a Modal sandbox: identical
+  fingerprints — all 10 measured elements, canvas included — with the
+  pinned font pack in both environments.
+- Pinned egress, verified live: a Modal run egressed from the profile's
+  own dedicated IP, exactly as pinned in its recipe. The gate checked the
+  egress before releasing state and accepted, and the session was
+  restored. The address itself is carried in the run's own metrics
+  record; each run produces the same record for its own IP.
+- Baseline restores: ~6.4 s on Steel, ~7.8 s on Browser Use, ~5.7 s on
+  Browserbase; full Modal runs 10–27 s in-session.
+- 0 login prompts, 0 MFA prompts across the Steel, Browser Use, Modal,
+  and Browserbase proof runs.
+
+## Plain limits
+
+- A site can still challenge a run. When it does, the run pauses with
+  LOGIN_REQUIRED; the live handoff is the recovery on Steel, Browser
+  Use, and Browserbase, and on Modal the recovery is still re-capture
+  and retry.
+- Browserbase sessions: the 5-minute timeout shown in a project's
+  settings is the default when no timeout is requested. Nephew requests
+  an explicit session window (1 hour) — measured granted in full,
+  including a probe at the 21,600-second API maximum.
+- One dedicated IP per identity, per-profile by design.
+- A handoff is one designated human, one controller, on a loopback page —
+  and it ends at its deadline whether the login is fixed or not.
+- No "works on every site" claims. The proof runs above are the runs
+  actually measured; every run is measured the same way and writes its
+  own metrics record.
+
+## Pricing
+
+You pay for profiles — identities you own and can revoke or take
+elsewhere — and for run-hours, the time an agent spends logged in as you.
+No per-seat fees.
+
+- Free — $0: 2 profiles, BYO mode; 1 hosted run-hour trial; concurrency 1
+- BYO — $19/mo: 10 profiles on your own Modal, Steel, Browser Use,
+  Browserbase or Bright Data accounts; unlimited run-hours (you pay your
+  providers directly); extra profiles $3/mo; concurrency 3
+- Hosted — $59/mo: 5 profiles, each with its own dedicated ISP IP; 30
+  run-hours included, then $0.60/run-hour; concurrency 3
+- Hosted Team — $199/mo: 20 profiles with dedicated ISP IPs; 200
+  run-hours included, then $0.50/run-hour; profile sharing, priority
+  support; concurrency 10
+- Enterprise — custom: unlimited profiles; own-stack / BYOC deploy, SSO,
+  custom regions, SLA
+
+## Machine-readable files
+
+- This file: https://nephew.ai/llms.txt
+- Structured manifest: https://nephew.ai/nephew.json

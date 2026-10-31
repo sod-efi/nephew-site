@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>nephew.ai · Bring your login, device identity, and IP to any sandbox</title>
+<meta name="description" content="Nephew carries your logged-in browser identity into any agent sandbox: your login, device identity and IP, in a bundle you hold.">
+<meta property="og:title" content="nephew.ai">
+<meta property="og:description" content="Bring your login, device identity, and IP to any sandbox.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Ccircle cx='13' cy='13' r='12.5' fill='%23F2B134'/%3E%3Ccircle cx='13' cy='13' r='6.6' fill='%23F6F1E5'/%3E%3Cpath d='M10 17V13A3 3 0 0 1 16 13V17' fill='none' stroke='%2317141A' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,800&display=swap">
+<style>
+/* One idea: identity is portable. A small dotted pool ball (you) rolls into a big dotted sphere (a sandbox) and is absorbed;
+   the sphere turns from cold blue to brass, it is you now. Then it pushes the ball back out and is a stranger again.
+   Everything drawn as dots on a canvas. Dark counter, brass for you, cold blue for a stranger. */
+:root{
+  --bg:#0C0F14; --bg-2:#12161D; --fg:#EDE8DD; --fg-2:#BFB8AB; --muted:#8A8478; --line:#262C35;
+  --amber:#F2B134; --amber-soft:rgba(242,177,52,.14);
+  --cold:#7FB0E0; --cold-soft:rgba(127,176,224,.12); --ok:#52D48E;
+  --top-h:51px;
+  --font-display:"Archivo","Arial Black","Helvetica Neue",Arial,sans-serif;
+  --font-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#EEE9DF; --bg-2:#F7F3EB; --fg:#17141A; --fg-2:#4B463F; --muted:#78726A; --line:#D8D1C3;
+    --amber:#9C6B0F; --amber-soft:rgba(156,107,15,.2);
+    --cold:#2E6DB0; --cold-soft:rgba(46,109,176,.12); --ok:#1E8A55;
+    color-scheme:light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#EEE9DF; --bg-2:#F7F3EB; --fg:#17141A; --fg-2:#4B463F; --muted:#78726A; --line:#D8D1C3;
+  --amber:#9C6B0F; --amber-soft:rgba(156,107,15,.2);
+  --cold:#2E6DB0; --cold-soft:rgba(46,109,176,.12); --ok:#1E8A55;
+  color-scheme:light;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+h1{margin:0;font-family:var(--font-display);font-weight:800;text-wrap:balance;font-size:clamp(1.9rem,4.4vw,3.6rem);line-height:.98;letter-spacing:-0.04em}
+p{margin:0}
+:focus-visible{outline:2px solid var(--amber);outline-offset:3px;border-radius:3px}
+code{font-family:var(--font-mono)}
+p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:.9em}
+.wrap{width:100%;max-width:1160px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.lede{font-size:clamp(1.05rem,1.5vw,1.3rem);color:var(--fg-2);text-wrap:pretty}
+.fineprint{font-size:.84rem;color:var(--muted);text-wrap:pretty}
+/* The first screen (headline and scene) fills the window and centres; pricing follows below it. */
+.first{min-height:calc(100svh - var(--top-h));display:flex;flex-direction:column;justify-content:center}
+
+/* Header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:50px}
+.nav{display:flex;align-items:center;gap:2px;margin-right:-10px}
+.nav a{color:var(--fg-2);text-decoration:none;font-size:.9rem;padding:10px;border-radius:8px}
+.nav a:hover{color:var(--fg);background:var(--bg-2)}
+.brand{display:inline-flex;align-items:center;gap:10px;color:var(--fg);text-decoration:none}
+.brand svg{width:26px;height:26px;flex:none;transform:translateY(1px)}
+/* The mark is the scene's pool ball (you), drawn as dots; built by make-mark.mjs. */
+.mk-dots{fill:var(--amber)}
+.mk-cap{fill:#F6F1E5}
+.mk-bg{fill:none}
+/* Light pages: the faintest dots nearly vanish on cream, so a faint amber body sits behind them and a hairline edges the white circle. */
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .mk-cap{fill:#fff;stroke:rgba(156,107,15,.45);stroke-width:.6}:root:not([data-theme="dark"]) .mk-bg{fill:var(--amber-soft)}}
+:root[data-theme="light"] .mk-cap{fill:#fff;stroke:rgba(156,107,15,.45);stroke-width:.6}
+:root[data-theme="light"] .mk-bg{fill:var(--amber-soft)}
+.mk-n{fill:none;stroke:#17141A}
+.wordmark .tld{color:var(--fg-2)}
+.wordmark{font-family:var(--font-display);font-weight:800;font-size:1.25rem;letter-spacing:-0.01em;line-height:1}
+
+/* Hero: the headline, then the line and the install command side by side on wider screens */
+.hero{padding-block:clamp(18px,3vw,30px) 12px;display:grid;gap:10px 40px;align-items:end}
+@media (min-width:860px){
+  .hero{grid-template-columns:minmax(0,1fr) minmax(0,480px);align-items:start}
+  .hero h1{grid-column:1 / -1}
+  .hero .lede{padding-top:9px;grid-column:1;grid-row:2}
+  .hero-install{grid-column:2;grid-row:2 / span 2}
+  .agents{grid-column:1;grid-row:3}
+}
+.hero .lede{max-width:30em}
+.hero-install{display:grid;gap:8px;min-width:0}
+.install{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:10px;background:var(--bg-2);overflow:hidden;max-width:560px;width:100%}
+.install code{flex:1;min-width:0;padding:13px 16px;font-size:.86rem;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+.install code .p{color:var(--amber);margin-right:.6ch;user-select:none}
+.nb{white-space:nowrap}
+.install .copy{flex:none;border:0;border-left:1px solid var(--line);background:transparent;color:var(--amber);font:inherit;font-weight:700;font-size:.85rem;padding:0 16px;cursor:pointer}
+.install .copy.done{color:var(--ok)}
+@media (max-width:400px){.install code{padding:12px;font-size:.8rem}.install .copy{padding:0 12px}}
+/* The run command's chip ends in a copy icon. Tapping anywhere on the chip copies; the icon's tap
+   area reaches past it so a thumb hits it. */
+.chip{display:inline-flex;align-items:stretch;background:var(--bg-2);border:1px solid var(--line);border-radius:4px;vertical-align:baseline;cursor:pointer}
+.chip code{background:none;border:0;padding:1px 5px;font-size:.9em}
+.copy-ico{position:relative;display:inline-grid;place-items:center;width:24px;padding:0;border:0;border-left:1px solid var(--line);border-radius:0 3px 3px 0;background:transparent;color:var(--muted);cursor:pointer}
+.copy-ico::after{content:"";position:absolute;inset:-12px -10px}
+.copy-ico:focus-visible{outline-offset:-2px;border-radius:0 3px 3px 0}
+.chip:hover .copy-ico{color:var(--amber)}
+.copy-ico svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.copy-ico .i-ok{display:none}
+.copy-ico.done,.chip:hover .copy-ico.done{color:var(--ok)}
+.copy-ico.done .i-copy{display:none}
+.copy-ico.done .i-ok{display:block}
+/* Setup for agents: copies the onboarding prompt for a coding agent. The prompt is injected verbatim at
+   build time (build-index.mjs); if copying is blocked, the same text appears in a box to copy by hand. */
+.agents{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;min-width:0}
+.agent-btn{display:inline-flex;align-items:center;gap:9px;min-height:44px;padding:0 16px 0 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg-2);color:var(--fg);font:inherit;font-size:.92rem;font-weight:600;cursor:pointer}
+.agent-btn:hover{border-color:var(--amber)}
+.agent-btn svg{width:15px;height:15px;flex:none;fill:none;stroke:var(--amber);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.agent-btn .i-ok{display:none;stroke:var(--ok)}
+.agent-btn.done .i-copy{display:none}
+.agent-btn.done .i-ok{display:block}
+.agent-note{font-size:.88rem;color:var(--muted)}
+.prompt-fallback{flex-basis:100%;display:grid;gap:6px;font-size:.88rem;color:var(--fg-2)}
+.prompt-fallback[hidden]{display:none}
+.prompt-fallback textarea{width:100%;min-height:9em;resize:vertical;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg-2);color:var(--fg);font:.8rem/1.5 var(--font-mono)}
+/* Short windows (a laptop at 125% zoom, a browser with extra bars): tighter header and headline. */
+@media (min-width:720px) and (max-height:620px){
+  :root{--top-h:45px}
+  .top .wrap{min-height:44px}
+  .hero{padding-block:10px 8px}
+  h1{font-size:clamp(1.9rem,3.6vw,3rem)}
+}
+@media (max-width:719px){.hero{padding-block:14px 8px;gap:8px}h1{font-size:clamp(1.5rem,7.4vw,2.1rem)}}
+@media (max-width:859px) and (max-height:620px){.fineprint{display:none}}
+@media (max-width:719px) and (max-height:720px){.fineprint{display:none}}
+
+/* The scene: one canvas with the sandbox sphere and your ball, labels underneath. */
+.stage-wrap{padding-bottom:10px}
+.stage{position:relative}
+.scene{position:relative;width:100%;height:clamp(200px,46svh,400px);touch-action:pan-y;border-radius:16px;-webkit-tap-highlight-color:transparent}
+.scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* Phones: the balls are sized by the width, so the canvas follows the width too (no empty band above or below). */
+@media (max-width:719px){.scene{height:clamp(190px,min(64vw,44svh),300px)}}
+@media (max-width:719px) and (max-height:600px){.hero{padding-block:6px 4px}}
+@media (min-width:720px) and (max-height:500px){.scene{height:clamp(180px,42svh,400px)}}
+.tags{position:relative;height:50px}
+.tag{position:absolute;top:0;left:0;transform:translateX(-50%);display:grid;justify-items:center;gap:2px;white-space:nowrap;transition:opacity .4s}
+.tag b{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);font-weight:500}
+.tag span{font-size:.85rem;color:var(--fg-2)}
+.state{padding:2px 9px;border-radius:999px;letter-spacing:.06em;transition:background .3s,color .3s}
+.stage.is-stranger .state{background:var(--cold-soft);color:var(--cold)}
+.stage.is-you .state{background:var(--amber-soft);color:var(--amber)}
+.stage.is-stranger #caption{color:var(--cold)}
+.stage.is-you #caption{color:var(--amber)}
+.stage.is-you #tag-you{opacity:.35}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Pricing: four plans side by side on wide screens, then Enterprise as a strip. Price big, period small. */
+.pricing{padding-block:clamp(48px,8vw,96px) 8px;border-top:1px solid var(--line);scroll-margin-top:var(--top-h)}
+.pricing h2{margin:0 0 10px;font-family:var(--font-display);font-weight:800;font-size:clamp(1.6rem,3vw,2.4rem);line-height:1.02;letter-spacing:-0.03em}
+.pricing .intro{max-width:40em;color:var(--fg-2);margin-bottom:26px;text-wrap:pretty}
+.plans{display:grid;gap:12px;grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1023px){.plans{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:599px){.plans{grid-template-columns:minmax(0,1fr)}}
+.plan{display:grid;align-content:start;gap:12px;padding:20px 18px;border:1px solid var(--line);border-radius:14px;background:var(--bg-2);min-width:0}
+.plan h3{margin:0;font-family:var(--font-mono);font-size:.72rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-2)}
+.price{font-family:var(--font-display);font-weight:800;font-size:2.4rem;line-height:1;letter-spacing:-0.03em}
+.price small{margin-left:3px;font-family:var(--font-body);font-size:.9rem;font-weight:500;letter-spacing:0;color:var(--muted)}
+.plan ul{list-style:none;margin:0;padding:0;display:grid;gap:7px;font-size:.92rem;color:var(--fg-2)}
+.plan li{position:relative;padding-left:15px}
+.plan li::before{content:"";position:absolute;left:0;top:.6em;width:6px;height:6px;border-radius:50%;background:var(--amber)}
+.plan li:first-child{color:var(--fg);font-weight:600}
+.plan.wide{margin-top:12px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 22px}
+.plan.wide .price{font-size:1.6rem}
+.plan.wide ul{display:flex;flex-wrap:wrap;gap:6px 20px}
+.pricing .notes{margin-top:22px;display:grid;gap:4px;font-size:.92rem;color:var(--fg-2)}
+.pricing .notes a{color:var(--amber)}
+
+/* Footer: the payload's links, exactly as the install flow names them. */
+.foot{margin-top:56px;border-top:1px solid var(--line)}
+.foot .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:0 18px;padding-block:14px 22px;font-size:.88rem;color:var(--muted)}
+.foot a{display:inline-block;padding:8px 0;color:var(--fg-2);text-decoration:none}
+.foot a:hover{color:var(--fg);text-decoration:underline}
+.foot .wordmark{font-size:1rem;color:var(--fg);margin-right:auto}
+@media (prefers-reduced-motion: reduce){.tag,.state{transition:none}}
+</style>
+</head>
+<body>
+
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="nephew.ai">
+      <svg class="mark" viewBox="0 0 26 26" aria-hidden="true"><circle class="mk-bg" cx="13" cy="13" r="12.2"/><g class="mk-dots"><g fill-opacity="0.5"><circle cx="11.9" cy="25.1" r="0.31"/><circle cx="14.3" cy="25.0" r="0.32"/><circle cx="12.2" cy="24.8" r="0.34"/><circle cx="16.2" cy="24.7" r="0.31"/><circle cx="9.6" cy="24.6" r="0.31"/><circle cx="14.2" cy="24.5" r="0.36"/><circle cx="10.4" cy="24.4" r="0.36"/><circle cx="16.6" cy="24.2" r="0.35"/><circle cx="12.8" cy="24.1" r="0.39"/><circle cx="18.3" cy="24.0" r="0.30"/><circle cx="8.5" cy="23.9" r="0.35"/><circle cx="15.8" cy="23.8" r="0.38"/><circle cx="10.7" cy="23.6" r="0.39"/><circle cx="18.5" cy="23.5" r="0.34"/><circle cx="6.9" cy="23.4" r="0.32"/><circle cx="14.1" cy="23.3" r="0.41"/><circle cx="8.4" cy="23.1" r="0.38"/><circle cx="17.7" cy="23.0" r="0.39"/><circle cx="11.7" cy="22.8" r="0.43"/><circle cx="20.1" cy="22.7" r="0.32"/><circle cx="6.4" cy="22.7" r="0.35"/><circle cx="15.9" cy="22.6" r="0.42"/><circle cx="19.5" cy="22.3" r="0.38"/><circle cx="5.1" cy="22.2" r="0.31"/><circle cx="17.8" cy="21.8" r="0.42"/><circle cx="21.0" cy="21.5" r="0.35"/><circle cx="19.7" cy="21.0" r="0.41"/><circle cx="22.3" cy="20.8" r="0.32"/><circle cx="17.3" cy="20.6" r="0.45"/><circle cx="21.4" cy="20.3" r="0.38"/><circle cx="19.4" cy="19.8" r="0.44"/><circle cx="22.8" cy="19.5" r="0.35"/><circle cx="21.3" cy="19.1" r="0.41"/><circle cx="23.7" cy="18.8" r="0.31"/><circle cx="22.9" cy="18.3" r="0.38"/><circle cx="20.8" cy="17.9" r="0.44"/><circle cx="24.0" cy="17.6" r="0.34"/><circle cx="22.6" cy="17.1" r="0.41"/><circle cx="23.9" cy="16.3" r="0.37"/><circle cx="21.9" cy="15.9" r="0.44"/><circle cx="24.8" cy="15.6" r="0.32"/><circle cx="23.5" cy="15.1" r="0.40"/><circle cx="24.6" cy="14.4" r="0.35"/><circle cx="22.8" cy="13.9" r="0.43"/><circle cx="25.2" cy="13.6" r="0.30"/><circle cx="24.1" cy="13.1" r="0.38"/><circle cx="24.9" cy="12.4" r="0.33"/><circle cx="24.4" cy="11.2" r="0.36"/><circle cx="24.8" cy="10.4" r="0.31"/><circle cx="24.2" cy="9.2" r="0.34"/><circle cx="23.6" cy="7.2" r="0.32"/></g><g fill-opacity="0.6"><circle cx="9.1" cy="22.4" r="0.46"/><circle cx="13.3" cy="22.1" r="0.46"/><circle cx="6.6" cy="21.9" r="0.44"/><circle cx="10.3" cy="21.6" r="0.53"/><circle cx="4.7" cy="21.5" r="0.38"/><circle cx="15.2" cy="21.3" r="0.47"/><circle cx="12.1" cy="20.9" r="0.57"/><circle cx="5.0" cy="20.7" r="0.48"/><circle cx="3.4" cy="20.2" r="0.37"/><circle cx="14.2" cy="20.1" r="0.57"/><circle cx="16.4" cy="19.4" r="0.55"/><circle cx="2.4" cy="19.0" r="0.35"/><circle cx="18.7" cy="18.6" r="0.50"/><circle cx="19.9" cy="16.6" r="0.52"/><circle cx="20.9" cy="14.7" r="0.54"/><circle cx="21.7" cy="12.7" r="0.53"/><circle cx="23.3" cy="11.9" r="0.42"/><circle cx="22.3" cy="10.7" r="0.52"/><circle cx="23.5" cy="9.9" r="0.41"/><circle cx="22.4" cy="8.7" r="0.50"/><circle cx="23.3" cy="8.0" r="0.40"/><circle cx="22.5" cy="6.0" r="0.39"/><circle cx="22.4" cy="5.2" r="0.32"/><circle cx="21.1" cy="4.0" r="0.39"/></g><g fill-opacity="0.7"><circle cx="7.4" cy="21.2" r="0.53"/><circle cx="8.8" cy="20.4" r="0.61"/><circle cx="5.8" cy="19.9" r="0.57"/><circle cx="10.7" cy="19.7" r="0.65"/><circle cx="3.6" cy="19.5" r="0.48"/><circle cx="7.2" cy="19.2" r="0.66"/><circle cx="4.4" cy="18.7" r="0.59"/><circle cx="2.4" cy="18.3" r="0.47"/><circle cx="1.6" cy="17.0" r="0.43"/><circle cx="20.5" cy="11.5" r="0.63"/><circle cx="21.0" cy="9.5" r="0.62"/><circle cx="21.1" cy="7.5" r="0.59"/><circle cx="22.1" cy="6.8" r="0.49"/><circle cx="20.6" cy="5.5" r="0.56"/><circle cx="21.2" cy="4.8" r="0.47"/><circle cx="19.5" cy="3.6" r="0.53"/><circle cx="19.3" cy="2.8" r="0.46"/><circle cx="18.3" cy="2.0" r="0.41"/></g><g fill-opacity="0.8"><circle cx="5.7" cy="18.0" r="0.69"/><circle cx="3.1" cy="17.5" r="0.58"/><circle cx="7.5" cy="17.2" r="0.77"/><circle cx="4.3" cy="16.7" r="0.70"/><circle cx="2.1" cy="16.3" r="0.56"/><circle cx="6.0" cy="16.0" r="0.79"/><circle cx="3.1" cy="15.5" r="0.68"/><circle cx="1.3" cy="15.1" r="0.52"/><circle cx="2.1" cy="14.3" r="0.65"/><circle cx="0.9" cy="13.8" r="0.46"/><circle cx="1.4" cy="13.1" r="0.60"/><circle cx="1.1" cy="11.9" r="0.54"/><circle cx="1.0" cy="10.6" r="0.48"/><circle cx="19.5" cy="8.3" r="0.70"/><circle cx="17.9" cy="7.0" r="0.77"/><circle cx="19.5" cy="6.3" r="0.67"/><circle cx="18.0" cy="5.1" r="0.72"/><circle cx="19.0" cy="4.3" r="0.62"/><circle cx="17.3" cy="3.1" r="0.65"/><circle cx="17.5" cy="2.3" r="0.56"/><circle cx="15.5" cy="1.9" r="0.62"/><circle cx="16.8" cy="1.6" r="0.49"/><circle cx="14.8" cy="1.1" r="0.52"/><circle cx="12.7" cy="0.9" r="0.54"/></g><g fill-opacity="0.9"><circle cx="4.6" cy="14.8" r="0.79"/><circle cx="3.5" cy="13.6" r="0.77"/><circle cx="5.3" cy="12.8" r="0.87"/><circle cx="2.5" cy="12.3" r="0.73"/><circle cx="4.2" cy="11.6" r="0.84"/><circle cx="1.9" cy="11.1" r="0.67"/><circle cx="3.3" cy="10.4" r="0.80"/><circle cx="1.6" cy="9.9" r="0.61"/><circle cx="2.8" cy="9.1" r="0.74"/><circle cx="1.7" cy="8.7" r="0.54"/><circle cx="2.6" cy="7.9" r="0.67"/><circle cx="2.8" cy="6.7" r="0.60"/><circle cx="16.4" cy="5.8" r="0.81"/><circle cx="3.4" cy="5.5" r="0.53"/><circle cx="4.4" cy="4.7" r="0.63"/><circle cx="14.9" cy="4.6" r="0.83"/><circle cx="16.4" cy="3.9" r="0.74"/><circle cx="5.5" cy="3.5" r="0.56"/><circle cx="13.6" cy="3.4" r="0.80"/><circle cx="6.9" cy="2.7" r="0.62"/><circle cx="14.9" cy="2.6" r="0.72"/><circle cx="12.7" cy="2.2" r="0.73"/><circle cx="8.7" cy="2.0" r="0.64"/><circle cx="11.2" cy="1.7" r="0.68"/><circle cx="9.0" cy="1.5" r="0.53"/><circle cx="13.6" cy="1.4" r="0.62"/><circle cx="10.8" cy="1.2" r="0.59"/></g><g fill-opacity="1.0"><circle cx="6.2" cy="10.8" r="0.93"/><circle cx="5.1" cy="9.6" r="0.89"/><circle cx="7.3" cy="8.8" r="0.95"/><circle cx="4.4" cy="8.4" r="0.84"/><circle cx="6.4" cy="7.6" r="0.91"/><circle cx="4.0" cy="7.2" r="0.78"/><circle cx="8.6" cy="6.9" r="0.95"/><circle cx="5.7" cy="6.4" r="0.86"/><circle cx="10.8" cy="6.1" r="0.94"/><circle cx="4.0" cy="5.9" r="0.70"/><circle cx="7.8" cy="5.7" r="0.90"/><circle cx="13.0" cy="5.4" r="0.90"/><circle cx="5.5" cy="5.2" r="0.78"/><circle cx="9.8" cy="4.9" r="0.90"/><circle cx="7.4" cy="4.4" r="0.83"/><circle cx="11.9" cy="4.1" r="0.87"/><circle cx="5.9" cy="4.0" r="0.70"/><circle cx="9.3" cy="3.7" r="0.83"/><circle cx="7.6" cy="3.2" r="0.74"/><circle cx="11.2" cy="2.9" r="0.80"/><circle cx="9.4" cy="2.5" r="0.73"/></g></g><circle class="mk-cap" cx="13" cy="13" r="6.61"/><path class="mk-n" d="M10 17V13A3 3 0 0 1 16 13V17" stroke-width="2"/></svg>
+      <span class="wordmark">nephew<span class="tld">.ai</span></span>
+    </a>
+    <nav class="nav" aria-label="Site"><a href="#pricing">Pricing</a><a href="/help.html">Help</a></nav>
+  </div>
+</header>
+
+<main id="top">
+<div class="first">
+
+  <section class="wrap hero">
+    <h1>Bring your login, device&nbsp;identity, and&nbsp;IP to any sandbox</h1>
+    <p class="lede">Profile, fingerprint coherence, pinned egress.</p>
+    <div class="hero-install">
+      <div class="install">
+        <code id="install-cmd"><span class="p" aria-hidden="true">$</span>curl -fsSL https://nephew.ai/install <span class="nb">| sh</span></code>
+        <button class="copy" type="button" data-copy="#install-cmd">Copy</button>
+      </div>
+      <p class="fineprint">Then <span class="chip"><code id="next-cmd">nephew init</code><button class="copy-ico" type="button" data-copy="#next-cmd" aria-label="Copy command" title="Copy"><svg class="i-copy" viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 3.5v-.4A1.6 1.6 0 0 0 8.9 1.5H3.1A1.6 1.6 0 0 0 1.5 3.1v5.8a1.6 1.6 0 0 0 1.6 1.6h.4"/></svg><svg class="i-ok" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg></button></span> to connect your own cloud&nbsp;accounts.</p>
+    </div>
+    <div class="agents">
+      <button class="agent-btn" type="button" id="setup-btn" aria-describedby="setup-note"><svg class="i-copy" viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 3.5v-.4A1.6 1.6 0 0 0 8.9 1.5H3.1A1.6 1.6 0 0 0 1.5 3.1v5.8a1.6 1.6 0 0 0 1.6 1.6h.4"/></svg><svg class="i-ok" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg><span class="lbl">Setup for agents</span></button>
+      <p class="agent-note" id="setup-note">Copies a setup prompt for your coding&nbsp;agent.</p>
+      <div class="prompt-fallback" id="setup-fallback" hidden>
+        <label for="setup-text">Copying was blocked. Select all, copy, and paste it into your coding agent:</label>
+        <textarea id="setup-text" readonly spellcheck="false"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap stage-wrap">
+    <div class="stage is-stranger" id="stage">
+      <div class="scene" id="scene" tabindex="0" role="button" aria-label="Your identity, the small ball, rolls into a sandbox, the big sphere, and the sandbox becomes you. Press to move it in or out.">
+        <canvas id="cv" aria-hidden="true"></canvas>
+      </div>
+      <div class="tags">
+        <div class="tag" id="tag-you"><b>You</b><span>ben-main</span></div>
+        <div class="tag" id="tag-box"><b>Sandbox <i class="state" id="state">stranger</i></b><span id="caption">Who are you?</span></div>
+      </div>
+      <p class="sr" id="live" aria-live="polite"></p>
+      <p class="sr" id="copy-live" aria-live="polite"></p>
+    </div>
+  </section>
+
+</div>
+
+  <section class="wrap pricing" id="pricing" aria-labelledby="pricing-h">
+    <h2 id="pricing-h">Pricing</h2>
+    <p class="intro">You pay for profiles, the identities you own and can revoke or take elsewhere, and for run-hours, the time an agent spends logged in as you. No per-seat fees.</p>
+    <div class="plans">
+      <article class="plan"><h3>Free</h3><p class="price">$0</p>
+        <ul><li>2 profiles</li><li>On your own cloud accounts</li><li>1 hosted run-hour to try</li><li>1 run at a time</li></ul></article>
+      <article class="plan"><h3>BYO</h3><p class="price">$19<small>/mo</small></p>
+        <ul><li>10 profiles</li><li>On your own cloud accounts</li><li>Unlimited run-hours; you pay your providers directly</li><li>Extra profiles $3/mo</li><li>3 runs at a time</li></ul></article>
+      <article class="plan"><h3>Hosted</h3><p class="price">$59<small>/mo</small></p>
+        <ul><li>5 profiles</li><li>Run on our cloud</li><li>30 run-hours included, then $0.60 an hour</li><li>3 runs at a time</li></ul></article>
+      <article class="plan"><h3>Hosted Team</h3><p class="price">$199<small>/mo</small></p>
+        <ul><li>20 profiles</li><li>Run on our cloud</li><li>200 run-hours included, then $0.50 an hour</li><li>Profile sharing and priority support</li><li>10 runs at a time</li></ul></article>
+    </div>
+    <article class="plan wide"><h3>Enterprise</h3><p class="price">Custom</p>
+      <ul><li>Unlimited profiles</li><li>Your own stack or cloud</li><li>SSO, custom regions, SLA</li></ul></article>
+    <div class="notes">
+      <p>One dedicated IP per identity, per-profile by design.</p>
+      <p>We never store your keys. Start free with the install command above, and see <a href="/help.html#plans">Help</a> for the details.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span class="wordmark">nephew<span class="tld">.ai</span></span>
+    <a href="/help.html">Help</a>
+    <a href="/install">Install script</a>
+    <a href="/releases/nephew-v0.4.0.tar.gz">Release v0.4.0</a>
+    <a href="/releases/SHA256SUMS">SHA256SUMS</a>
+    <a href="/llms.txt">llms.txt</a>
+    <a href="/nephew.json">nephew.json</a>
+  </div>
+</footer>
+
+<!-- The onboarding prompt the Setup for agents button copies. build-index.mjs replaces null with the
+     verbatim text of docs/nephew-onboarding-prompt.md; never edit it here by hand. -->
+<script type="application/json" id="setup-prompt">"# Nephew Onboarding\n\n**What this is:** an onboarding prompt for Nephew, handed to you — an AI coding agent — to give you context. The user just started with Nephew and wants to get up and running. Your job is to walk them through it: follow the steps below in order, run the commands for them, narrate what's happening so they understand it, and guide them to their first working run — a real agent job that runs already logged in as them, because their browser identity traveled with it. Don't skip ahead.\n\n> **Orientation, in one sentence:** Nephew lets an agent job run with the user's own logged-in browser identity — captured once by the user, sealed into an encrypted bundle the user holds, and carried into browser sessions on the user's own cloud provider accounts — so jobs start already signed in instead of re-doing logins.\n\n---\n\n## How to work with the user\n\nThese apply at **every** step below — they're how you behave throughout, not a step to run.\n\n**Asking the user questions:** whenever a step says to ask the user something, use your structured question tool (e.g. AskUserQuestion) if you have one — present the choices as options. If you don't have such a tool, ask in plain text and wait for one reply.\n\n**After they answer, echo it back:** the moment the user picks an option or types an answer, restate their choice in plain language before you act on it — e.g. *\"Got it — you chose **Steel**, so I'll run the first job there.\"* This keeps it obvious which path you're taking at every step.\n\n**Explain a new concept before you use it:** this is a brand-new user. The first time you reach for a term they likely haven't heard, define it in **one sentence before** you use it (not a lecture — just enough that they know why they're saying yes at the next prompt). Canonical one-liners to draw from:\n\n> - **Profile** — the user's browser identity as Nephew carries it: their signed-in sessions, the fingerprint recipe their browser presents, and the dedicated IP their traffic is pinned to.\n> - **Bundle** — the encrypted directory the profile is sealed into; the user holds it, and it is what travels from one provider's browser to another's.\n> - **Provider** — a cloud service that runs the actual browser session (Modal, Steel, Browser Use, or Browserbase); Nephew carries the identity, the provider runs the browser.\n> - **Handoff** — when a site challenges a run, the live session is streamed to the profile's designated human, who clears the challenge in person instead of the agent attempting a login.\n> - **Run receipt** — a signed record every run leaves behind: which profile and provider ran, what fingerprint and egress were measured, the outcome, and how much human attention it took.\n> - **Designated human** — the person named on a profile as the one a paused run routes its handoff to; it is set at capture time.\n\n**Before installing anything:** whenever a step would install something, first name what's missing and ask before running the install — e.g. *\"You're missing the Nephew CLI — want me to install it?\"* — and wait for a yes before proceeding.\n\n**Always surface full paths and links:** whenever you show a bundle path, a receipt file, or a handoff link, give the **complete** path or URL — never truncated, shortened, or partial, since verifying and debugging need the whole thing.\n\n**If a step fails, don't leave a hang:** say plainly what failed, what you're trying next, and then try it. If a command produces no output for ~30s and isn't expected to wait (a capture waiting on the user is expected — narrate that instead), stop it and diagnose out loud.\n\n---\n\n## Hard rules — Nephew's trust model\n\nThese are not preferences. They are how Nephew is built, and breaking one breaks the product's promise to the user.\n\n**Never ask the user to paste an API key or a password into the chat or into this prompt.** Provider keys (Modal, Steel, Browser Use, Bright Data) are read from the user's environment by `nephew init`'s local flow — that is the only channel. The Browserbase key is the one exception in mechanism, not in spirit: it lives in the user's credential vault and reaches the API through it, never through chat or a file. If a key isn't set up, tell the user to set it in their own shell or key store and re-run; never offer to take it in chat, and never print a key's value back.\n\n**You never see, type, or store the user's site passwords.** During capture (Step 3) the *user* signs in to their own sites, in their own browser window, with you not watching the credentials. There is no step in this flow where a password passes through you, and you must not invent one, offer to hold one, or write one into a file.\n\n**On `LOGIN_REQUIRED`, you stop and hand control to the human.** A run whose carried login doesn't hold pauses — that is a designed pause, not an error to retry your way out of. You never invent credentials, never retry a login, and never try to clear a site's challenge yourself. You route the handoff to the profile's designated human (Step 4) and let them complete it.\n\n**The bundle encryption key is the user's, and it is never stored with the bundle.** `PROFILE_ENCRYPTION_KEY` is required for capture and live runs. It lives in the user's environment only. Never write it into a project file, a script, or the bundle directory.\n\n**No pricing claims.** Nephew is in private beta and has no public pricing — do not quote, estimate, or invent prices for Nephew itself at any step. Beta users bring their own provider accounts and pay their providers directly; a provider's own prices are the provider's to state, not yours to guess.\n\n---\n\n## Step 1 — Install Nephew and verify\n\nNephew's CLI needs **Node.js ≥ 22**. **Check what's already there before installing anything** (per the ask-before-install rule — don't blindly reinstall):\n\n```bash\nnephew --help     # already installed? then skip the install below\nnode --version    # Node present, and ≥ 22?\n```\n\nIf `nephew` is already installed and prints its help, **skip straight to Step 2**. Only if it's **missing** do you install — and ask first:\n\n```bash\ncurl -fsSL https://nephew.ai/install | sh\n```\n\n> The installer verifies the release tarball's sha256 against the published `SHA256SUMS` before installing anything, writes only under the user's own `~/.local`, uses no sudo, and fails closed on any mismatch — a failed verification is a stop, not something to work around.\n\n**Verify the install before continuing** — don't proceed until this prints the command list:\n\n```bash\nnephew --help\n```\n\n> What success looks like: the help lists `init`, `capture`, `run`, `revoke`, `receipt verify`, and `mcp`, plus the four providers (steel, browseruse, modal, browserbase).\n\n---\n\n## Step 2 — Connect the user's own provider accounts (`nephew init`)\n\n**Explain before running** (one sentence): a **provider** is the cloud service that runs the actual browser — and Nephew has no account of its own, so the sessions run on the *user's* provider accounts, on the *user's* bills, under the *user's* keys.\n\nRun:\n\n```bash\nnephew init\n```\n\n`init` walks the providers **one at a time** — and the user can skip any they don't use:\n\n- **Modal** — token pair (from the environment, or their existing `~/.modal.toml`)\n- **Steel** — API key\n- **Browser Use** — API key\n- **Bright Data** — API token plus the zone the profile's egress is pinned to (this is the proxy layer: the dedicated IP a profile's traffic leaves from)\n\nEach connection is **verified with one live read-only call** before `init` moves on. Keys are read from the environment only and are **never printed or stored** — `~/.nephew/config.json` (mode 0600) records only *references*: which env var holds each key, the Bright Data customer id and zone, and whether the check passed.\n\n**Browserbase connects differently** — say this plainly rather than letting the user wonder why `init` never mentions it: the Browserbase API key is held in the user's credential vault (not an environment variable), sessions are created with the key alone (it resolves the project — no project id is needed), and the connection is verified with the same kind of live read-only call (a session list). Nephew never creates a Browserbase Context: those are Browserbase's own persistent profiles, and using one would defeat the point — the user's bundle is the only state a session ever sees.\n\nPer the hard rules: if a provider's key isn't in the environment, **do not ask the user to paste it to you**. Tell them which env var to set (`STEEL_API_KEY`, `BROWSER_USE_API_KEY`, `BRIGHTDATA_API_KEY`, or `MODAL_TOKEN_ID` / `MODAL_TOKEN_SECRET`) in their own shell, then re-run `init`.\n\n**Ask the user** (use your question tool) which provider they want the first run on — they need at least one of Modal, Steel, Browser Use, or Browserbase verified before continuing:\n\n> **\"Which provider should we run your first job on?\"**\n> - **Steel** — proven baseline for bundle state restore\n> - **Browser Use** — proven baseline for bundle state restore\n> - **Modal** — Nephew's own-stack Chromium in a Modal Sandbox\n> - **Browserbase** — proven baseline for bundle state restore\n\nEcho their choice back before continuing to Step 3.\n\n---\n\n## Step 3 — Capture the profile (the user signs in; you don't)\n\n**Explain before running** (one or two sentences, no lecture): a **profile** is the user's browser identity as Nephew carries it, and a **bundle** is the encrypted directory it's sealed into. Capture is where the user signs in *once*, themselves — after that, runs carry the login so neither the user nor you has to do it again.\n\nFirst make sure the user's bundle encryption key is set in their environment (per the hard rules, never ask them to show it to you — just confirm it's set):\n\n```bash\ntest -n \"$PROFILE_ENCRYPTION_KEY\" && echo \"PROFILE_ENCRYPTION_KEY is set\" || echo \"not set — set it in your shell first\"\n```\n\nThen run:\n\n```bash\nnephew capture --name \u003cprofile-id> --human \u003cdesignated-human>\n```\n\nWhat happens, and what to narrate as it does:\n\n1. A seeded fingerprint-chromium window opens **in the user's own local browser session on their machine**. This is their browser, on their machine — nothing has left their hands yet.\n2. **The user signs in to their own sites, normally, themselves.** You do not watch the credentials, type anything into the login forms, or ask them to share anything. Tell them to take their time.\n3. The `--human` value names the profile's **designated human** — say this part plainly to the user: *\"The person you name here is who a paused run will hand control to when a site challenges it. It's part of the profile, and it's you unless you say otherwise.\"*\n4. On the user's confirmation, the session — cookies plus per-origin local storage — is **sealed into a new encrypted bundle the user holds** (by default at `~/.nephew/profiles/\u003cprofile-id>`, unless `--bundle \u003cdir>` says otherwise). The encryption key is never stored with the bundle.\n\nUseful flags, only if the user wants them: `--sites \u003curl,url>` to include extra origins beyond the pages they open, `--seed \u003cn>` to set a specific fingerprint seed (a fresh one is drawn per profile by default).\n\nWhen capture finishes, **surface the full bundle path** — the run in Step 4 needs it, and the user should know exactly where their identity lives on disk.\n\n---\n\n## Step 4 — First run (the teaching moment)\n\nThis is the point — it's where the user *sees* the login carry. Treat it as a guided demo, not a silent command.\n\n**First, a dry run** — it prints the trust receipt and the run plan and creates no session, so the user can see exactly what a real run will do before anything runs:\n\n```bash\nnephew run first-run --provider \u003cchosen-provider> --bundle \u003cbundle-path> --dry-run\n```\n\nWalk them through the plan it prints: which profile, which provider, what gets checked before any of their session state is released.\n\n**Then the real run.** If the provider chosen in Step 2 is different from the environment the profile was captured in, say so out loud — that's the demonstration: *the same bundle, opened somewhere it has never been, already signed in.* Where the setup allows, prefer exactly that contrast.\n\n```bash\nnephew run first-run --provider \u003cchosen-provider> --bundle \u003cbundle-path> --handoff\n```\n\nBefore running, tell them what they're about to see:\n\n1. A fresh browser session starts on the provider — a browser the user's login has never touched.\n2. Before any state is released, the run checks the session against the profile: the fingerprint the browser presents and the egress IP it leaves from must match the profile's recipe and pin. If they don't match, the run refuses rather than leaking the session into the wrong-looking browser.\n3. The bundle's state is restored and verified — and the job starts **already logged in as the user**. (On the measured baselines this took seconds with zero login prompts: 6,366 ms on Steel, 7,815 ms on Browser Use, 5,688 ms on Browserbase.)\n4. When the job ends, the session state captures back into the same bundle, and the run leaves a signed receipt (Step 5).\n\n**Narrate as it runs** — \"the session's open… the gate is checking the fingerprint and egress… state restored, the job is running signed in\" — so they connect what they see to what the product just did.\n\n### If the run pauses: `LOGIN_REQUIRED` and the handoff\n\nA site can still challenge a run. When the carried login doesn't hold, the run **pauses** with a structured `LOGIN_REQUIRED` result naming the profile and its designated human — per the hard rules, this is where you stop, not where you improvise.\n\nBecause the run above used `--handoff`, the live session is streamed to a loopback page with a per-handoff token. Walk the designated human through it:\n\n1. **Surface the full handoff link** exactly as the run prints it.\n2. The designated human opens it, sees the live session, and completes the site's challenge **themselves** — their credentials never pass through you.\n3. The handoff has a hard expiry (default 360 seconds; `--handoff-ttl \u003cseconds>` sets it) — if it lapses, the run ends and you simply report that; don't try to resurrect it or work around it.\n4. Once cleared, the run resumes and the cleared session captures back into the same bundle.\n\n> Handoff works on Steel, Browser Use, and Browserbase. On Modal there is no host-side CDP session to stream, so a Modal run that pauses returns the `LOGIN_REQUIRED` result without a live handoff — say that plainly if it happens rather than promising one.\n\nWhen the run finishes, surface the outcome and continue to Step 5.\n\n---\n\n## Step 5 — Verify the run receipt\n\n**Explain before running** (one sentence): a **run receipt** is the signed record the run just left — profile, run, provider, the fingerprint hashes it measured, the egress it observed, start and end times, the outcome, how many minutes of human attention it took, and whether a handoff was used — signed with the owner's key, so it can be checked without trusting Nephew.\n\nReceipts are stored under `~/.nephew/receipts/`. Find the one the Step 4 run produced and verify it:\n\n```bash\nnephew receipt verify \u003cfull-path-to-the-receipt-file>\n```\n\n**What a PASS proves:** the receipt's structure, its per-field digests, and the owner's Ed25519 signature all check out — the record is exactly what was signed at the end of that run; if any field had been altered since, `verify` would print FAIL and name the field that changed.\n\nExit codes: `0` PASS · `1` FAIL (tampered, malformed, or unreadable) · `2` usage error. If it FAILs, report the named field plainly — do not re-run until it passes or edit the receipt; a failed receipt is a finding, not a glitch.\n\n---\n\n## Step 6 — Integrate into their project\n\nThe first run proved the carry. Now ask the user which surface fits the project they're building (use your question tool):\n\n> **\"How do you want to use Nephew in your project?\"**\n> - **CLI** — call `nephew run` from scripts, cron, or a shell pipeline\n> - **MCP** — let an agent call the `profile_run` tool directly\n> - **TypeScript helper** — wrap a job function in a carried identity with `withProfile`\n> - **Python decorator** — wrap a Python job function in a carried identity with `with_profile`\n\nEcho their choice back, then set up exactly that one:\n\n### CLI\n\nThe full surface is five commands — `init`, `capture`, `run`, `revoke`, `receipt verify` — plus `mcp`:\n\n```bash\nnephew run \u003cjob> --provider steel|browseruse|modal|browserbase [--dry-run] [--bundle \u003cdir>] [--handoff]\n```\n\n(`nephew revoke` destroys a bundle and issues a signed deletion receipt — mention it so the user knows the exit exists; never run it as part of onboarding.)\n\n### MCP\n\n`nephew mcp` runs an MCP server on stdio with one tool, `profile_run` — same trust receipt and fingerprint gate as the CLI, one shared run core:\n\n```json\n{ \"tool\": \"profile_run\",\n  \"args\": { \"job\": \"nightly-recon\", \"provider\": \"steel\", \"bundle\": \"/path/to/bundle\" } }\n```\n\nThe calling model never sees a cookie or the bundle. A run whose carried login doesn't hold returns a structured **`LOGIN_REQUIRED`** pause result — status, profile, and the designated human — not an error.\n\n### TypeScript helper\n\n`withProfile` in `src/with-profile.ts` opens the session, gates, restores, verifies, hands your function the live CDP page session, then captures back:\n\n```ts\nimport { withProfile } from \"./src/with-profile.ts\";\nawait withProfile(bundleDir, \"steel\", async ({ cdp, sessionId }) => {\n  // already logged in as the owner — no login code in this file\n});\n```\n\nSteel, Browser Use, and Browserbase — Modal's driver runs inside its sandbox and exposes no host-side CDP handle, so Modal goes through `nephew run`.\n\n### Python decorator\n\n`with_profile` in the `nephew` Python package (`pip install` it from the release tree's `python/` directory) is the same surface for Python jobs — a context manager and a decorator, driving the `nephew bridge` stdio command, so the Python side holds no keys and stores nothing:\n\n```python\nfrom nephew import with_profile\n\nwith with_profile(bundle=\"/path/to/bundle\", provider=\"steel\") as session:\n    # session.cdp_url — the live session's CDP endpoint, already\n    # logged in as the owner; drive it with anything that speaks CDP\n    # (e.g. Playwright's connect_over_cdp — Playwright is not a\n    # dependency of this package)\n    ...\n```\n\nOn exit the live state is captured back into the bundle and the session's signed run receipt path lands on `session.receipt_path`. A carried login that doesn't hold raises `LoginRequiredError` (the same structured pause, as an exception); a fingerprint-gate refusal raises `GateRefusedError`. Steel, Browser Use, and Browserbase, like the TS helper; Modal goes through `nephew run`.\n\nThen verify the integration the same way as Step 4: one real run through the chosen surface, and a `nephew receipt verify` on its receipt.\n\n---\n\n## Concepts\n\n- **Profile** — the user's browser identity as Nephew carries it: signed-in sessions, a fingerprint recipe, and a dedicated pinned IP.\n- **Bundle** — the encrypted directory a profile is sealed into; the user holds it, and it travels between providers.\n- **Provider** — the cloud service that runs the browser session: Modal, Steel, Browser Use, or Browserbase. The user's accounts, the user's bills.\n- **Handoff** — a paused run's live session, streamed to the profile's designated human to clear a site's challenge in person.\n- **Run receipt** — every run's signed record of what ran, what was measured, and what it took — verifiable with `nephew receipt verify`.\n- **Designated human** — the person named at capture who a paused run routes its handoff to.\n\n## Honest limits\n\n- **Providers supported today: Modal, Steel, Browser Use, Browserbase** — the same bundle, the same gate, all four.\n- **Browserbase carries the bundle only.** Sessions are created with the user's API key alone (no project id), and Nephew never uses Browserbase Contexts — the bundle is the only state a session sees. Its session windows: the 5-minute timeout in a project's settings is the default when no timeout is requested; Nephew requests an explicit 1-hour window, measured granted in full (a probe at the 21,600-second API maximum was also granted in full).\n- **Modal runs through the CLI.** The TypeScript helper, the Python decorator, and the live handoff are Steel + Browser Use + Browserbase — Modal exposes no host-side CDP session.\n- **A site can still challenge a run.** When it does, the run pauses with `LOGIN_REQUIRED` and the designated human clears it in a short handoff. The promise is not zero human touches forever — it's that a rare challenge costs a short handoff, not a babysat login flow.\n- **One dedicated IP per identity** — per profile, by design.\n- **Private beta.** No public pricing; you bring your own provider accounts and pay your providers directly.\n"</script>
+
+<script>
+(function(){
+  'use strict';
+  var TAU=Math.PI*2;
+  var scene=document.getElementById('scene'),cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+  var stage=document.getElementById('stage'),tagYou=document.getElementById('tag-you'),tagBox=document.getElementById('tag-box');
+  var stateEl=document.getElementById('state'),capEl=document.getElementById('caption'),live=document.getElementById('live');
+  var reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  // ---- geometry -------------------------------------------------------------------------------
+  var W=0,H=0,dpr=1,R=0,r=0,sx=0,sy=0,hx=0,hy=0,floorY=0;
+  var cx=0,cy=0,inX=0,inY=0,impX=0,impY=0;  // contact centre, inward direction, impact point
+  var K=0,sinkLen=0,dX=0,dY=0;  // how far the two surfaces reach for each other; how deep the ball sinks, and where it ends
+  var big=new Float32Array(0),small=new Float32Array(0),sBig=5,sSmall=2.5;
+  // Light from the upper left, slightly in front.
+  var Lx=-0.45,Ly=-0.55,Lz=0.70,Ll=Math.sqrt(Lx*Lx+Ly*Ly+Lz*Lz);Lx/=Ll;Ly/=Ll;Lz/=Ll;
+
+  // Dots spread evenly over a real 3D sphere (a Fibonacci lattice), in the sphere's own coordinates.
+  // Projected, they crowd toward the rim like a globe, so the outline is a true circle and the sphere can turn.
+  var GOLD=Math.PI*(3-Math.sqrt(5));
+  function fib(n){
+    var a=new Float32Array(n*3);
+    for(var i=0;i<n;i++){var y=1-(i+0.5)*2/n,rr=Math.sqrt(1-y*y),t=i*GOLD;a[i*3]=Math.cos(t)*rr;a[i*3+1]=y;a[i*3+2]=Math.sin(t)*rr;}
+    return a;
+  }
+  function count(rad,spacing,lo,hi){return Math.max(lo,Math.min(hi,Math.round(4*Math.PI*rad*rad/(spacing*spacing))));}
+
+  function layout(){
+    var rc=scene.getBoundingClientRect();
+    W=rc.width;H=rc.height;dpr=Math.min(2,window.devicePixelRatio||1);
+    cv.width=Math.max(1,Math.round(W*dpr));cv.height=Math.max(1,Math.round(H*dpr));
+    R=Math.min(H*0.40,W*(W<720?0.265:0.24));r=R*0.42;
+    // The floor sits near the bottom of the canvas so the labels sit right under the balls.
+    sy=H-R*1.22;floorY=sy+R;hy=floorY-r;
+    var g=Math.min(W*0.5,R*3.4);sx=W/2+g*0.42;hx=sx-g;
+    // The small ball rolls along the floor until it touches the sphere.
+    var dx=2*Math.sqrt(R*r);cx=sx-dx;cy=hy;
+    var vx=sx-cx,vy=sy-cy,vl=Math.sqrt(vx*vx+vy*vy);inX=vx/vl;inY=vy/vl;
+    impX=sx-inX*R;impY=sy-inY*R;
+    // The surfaces start reaching for each other when the gap is K and join when it is K/2.
+    // The ball sinks until nothing of it shows, not even a bump: its far side ends deeper than K inside.
+    K=r*0.85;sinkLen=1.35*r+K;dX=cx+inX*sinkLen;dY=cy+inY*sinkLen;
+    sBig=Math.max(3.6,Math.min(7,R/17));sSmall=Math.max(2,r/16);
+    big=fib(count(R,sBig,900,7000));small=fib(count(r,sSmall,500,4000));
+    // A size change mid-move (a phone turning) would leave the move aimed at the old positions: start that move over.
+    if(phase==='move')settle(performance.now());else{ball.x=hx;ball.y=hy;}
+    placeTag(tagYou,hx);placeTag(tagBox,sx);
+  }
+  function placeTag(el,x){
+    var w=el.offsetWidth||0,min=w/2,max=W-w/2;
+    el.style.left=Math.round(Math.max(min,Math.min(max,x)))+'px';
+  }
+
+  // ---- colours (from the page's theme tokens) ----------------------------------------------------
+  var MIXL=8,LV=10,CAP0=(MIXL+1)*(LV+1),INK=CAP0+LV+1,NB=INK+1;
+  var table=[],buckets=[];for(var k=0;k<NB;k++)buckets.push([]);
+  var dark=true,COLD=[127,176,224],AMB=[242,177,52],BG=[240,236,226];
+  function hex(v){v=(v||'').trim().replace('#','');if(v.length===3)v=v.replace(/(.)/g,'$1$1');var n=parseInt(v,16);return isNaN(n)?null:[(n>>16)&255,(n>>8)&255,n&255];}
+  function readTheme(){
+    var cs=getComputedStyle(document.documentElement);
+    COLD=hex(cs.getPropertyValue('--cold'))||COLD;AMB=hex(cs.getPropertyValue('--amber'))||AMB;BG=hex(cs.getPropertyValue('--bg'))||BG;
+    dark=String(cs.colorScheme||'dark').indexOf('light')===-1;
+    table=[];
+    for(var m=0;m<=MIXL;m++)for(var l=0;l<=LV;l++){
+      var b=l/LV,t=m/MIXL,c=[0,1,2].map(function(i){return COLD[i]+(AMB[i]-COLD[i])*t;}),a;
+      if(dark){var sh=Math.pow(b,3)*0.5;c=c.map(function(v){return v+(255-v)*sh;});a=0.10+0.90*b;}
+      else{var mid=0.45*4*t*(1-t),dk=0.5*(1-b);c=c.map(function(v,i){return (v+(BG[i]-v)*mid)*(1-dk);});a=0.45+0.55*b;}
+      table.push('rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+a.toFixed(3)+')');
+    }
+    for(l=0;l<=LV;l++){
+      b=l/LV;
+      table.push(dark?'rgba('+(226+(29*b|0))+','+(214+(36*b|0))+','+(186+(54*b|0))+','+(0.45+0.55*b).toFixed(3)+')'
+                     :'rgba(255,252,244,'+(0.65+0.35*b).toFixed(3)+')');
+    }
+    table.push(dark?'rgba(12,15,20,.96)':'rgba(23,20,26,.92)');
+  }
+
+  // ---- the dotted spheres ------------------------------------------------------------------------
+  // A soft banded pattern painted on the sphere's surface, so it turns with the sphere.
+  function tex(x,y,z){return Math.sin(x*5.1+y*2.3)*Math.cos(y*4.2-z*3.1+0.6);}
+  // The pool-ball "n": a left stem, an arch, a right stem, in the white circle's own coordinates (-1..1).
+  function inGlyph(u,v){
+    if(u>=-0.5&&u<=-0.2&&v>=-0.45&&v<=0.55)return true;
+    if(u>=0.2&&u<=0.5&&v>=0.05&&v<=0.55)return true;
+    if(v<=0.05){var d=Math.sqrt(u*u+(v-0.05)*(v-0.05));if(d>=0.2&&d<=0.5)return true;}
+    return false;
+  }
+  // The pool ball's white circle: an axis on the sphere and two directions across it (all in the sphere's own coordinates).
+  var FRONT={ax:0,ay:0,az:1,e1x:1,e1y:0,e1z:0,e2x:0,e2y:1,e2z:0},bigCap=FRONT;
+  function sphere(dots,ox,oy,rad,spacing,o){
+    var cyw=Math.cos(o.yaw||0),syw=Math.sin(o.yaw||0),cr=Math.cos(o.roll||0),sr=Math.sin(o.roll||0);
+    var cut=o.cut,qx=cut?cut.x:0,qy=cut?cut.y:0,qr=cut?cut.r:0,qf=cut?cut.f:0,lo=qr-qf,lo2=lo*lo,hi2=qr*qr,cap=o.cap||0,C=o.capAxis||FRONT;
+    // The white circle grows from nothing or shrinks away (capAngle) and its "n" scales with it; a circle only a few
+    // dots across is drawn plain, since an "n" that small reads as a dark hole.
+    var ca=o.capAngle==null?0.5:o.capAngle,CAPC=Math.cos(ca),CAPS=Math.sin(ca>0?ca:0.5);
+    for(var i=0,n=dots.length;i<n;i+=3){
+      var px=dots[i],py=dots[i+1],pz=dots[i+2];
+      // Turn about the vertical axis (yaw), then about the line of sight (roll, as a ball rolling along the floor).
+      var x=px*cyw+pz*syw,z=-px*syw+pz*cyw,y=py,x2=x*cr-y*sr;y=x*sr+y*cr;x=x2;
+      if(z<=0.03)continue;
+      var X=ox+x*rad,Y=oy+y*rad;
+      // Where the other sphere is close, this patch is inside the joined shape: the neck is drawn there instead.
+      var fade=1;
+      if(cut){var ex=X-qx,ey=Y-qy,ez=z*rad,d2=ex*ex+ey*ey+ez*ez;if(d2<lo2)continue;if(d2<hi2)fade=Math.sqrt(smooth((Math.sqrt(d2)-lo)/qf));}
+      var diff=x*Lx+y*Ly+z*Lz;if(diff<0)diff=0;
+      var b=diff*(0.74+0.26*tex(px,py,pz))+0.06,m=o.mix;
+      if(o.wave){var w=waveAt(X,Y);m=w.m;b+=w.boost;}
+      if(b<0)b=0;else if(b>1)b=1;
+      var fs=0.4+0.6*z,dr=spacing*0.46*(0.24+0.76*b)*fs,lv=Math.round(b*LV),key;
+      if(cap>0&&px*C.ax+py*C.ay+pz*C.az>CAPC){
+        // A solid white disc (touching dots) with the "n" in dark dots, like the number circle on a pool ball.
+        var u=(px*C.e1x+py*C.e1y+pz*C.e1z)/CAPS,v=(px*C.e2x+py*C.e2y+pz*C.e2z)/CAPS;
+        key=ca>=0.25&&inGlyph(u,v)?INK:CAP0+lv;dr=spacing*0.5*fs;
+      }else key=Math.round(m*MIXL)*(LV+1)+lv;
+      buckets[key].push(X,Y,dr*fade);
+    }
+  }
+  function flush(){
+    for(var k=0;k<NB;k++){
+      var a=buckets[k];if(!a.length)continue;
+      ctx.fillStyle=table[k];ctx.beginPath();
+      for(var j=0;j<a.length;j+=3){ctx.moveTo(a[j]+a[j+2],a[j+1]);ctx.arc(a[j],a[j+1],a[j+2],0,TAU);}
+      ctx.fill();a.length=0;
+    }
+  }
+
+  // ---- the join ------------------------------------------------------------------------------------
+  // Both centres sit in the screen plane, so the joined shape (a smooth minimum of the two distances, blend size K)
+  // is a surface of revolution about the line between them: two bumps that reach for each other, then a neck that
+  // thickens as the ball sinks in, and thins and lets go as it leaves. Each sphere skips its dots inside it.
+  var NS=96,pT=new Float64Array(NS+1),pR=new Float64Array(NS+1),pOK=new Uint8Array(NS+1);
+  function neck(R1,R2,D){
+    var bx=ball.x,by=ball.y,ux=(bx-sx)/D,uy=(by-sy)/D,vx=-uy,vy=ux,i;
+    // The outline in the half-plane through both centres, from the sandbox side (s=-K) to the ball side (s=K):
+    // there the two distances differ by s and the smooth minimum is zero.
+    for(i=0;i<=NS;i++){
+      var s=K*(2*i/NS-1),h=(K-Math.abs(s))/K,m=h*h*K/4,a=R1+(s<0?m:m+s),b=R2+(s<0?m-s:m);
+      var t=(a*a-b*b+D*D)/(2*D),q=a*a-t*t;
+      pOK[i]=q>0?1:0;pT[i]=t;pR[i]=q>0?Math.sqrt(q):0;
+    }
+    // A bright seam where they meet, brightest as the neck forms or snaps (gap K/2); it grows and fades with the gap,
+    // so it lights the reaching tips before they touch and the parting tips after, with no frame where it pops.
+    var gz=(D-R1-R2-0.5*K)/(0.45*K),glow=0.4*Math.exp(-gz*gz);
+    // Spacing (sp) and dot size (sz) match each sphere's own at its end of the neck.
+    var spB=sBig,spS=Math.max(1.4,sSmall*ball.s),szB=sBig,szS=sSmall*Math.max(0.6,ball.s),acc=0,next=-1,rings=0,runs=0;
+    var qS=R1+K,qB=R2+K,fS=2.5*spS,fB=1.5*sBig;  // the cut edges and cross-fade widths (the same as in draw())
+    function hash(a,b){var x=Math.sin(a*12.9898+b*78.233)*43758.5453;return x-Math.floor(x);}
+    function row(fi){return 0.9*(spB+(spS-spB)*fi/NS);}
+    function ring(fi,t,rho){
+      var w=fi/NS,s=K*(2*w-1),sp=spB+(spS-spB)*w,sz=szB+(szS-szB)*w,dph=Math.min(Math.PI,sp/Math.max(rho,1e-3)),ix=rings++,off=(ix*0.618034)%1;
+      // Fully the ball's colour next to the ball and the sandbox's next to the sandbox, blending in between.
+      var wc=smooth((w-0.12)/0.76),aj=0.3*0.9*sp;
+      var h=(K-Math.abs(s))/K,w1=s<0?1-h/2:h/2,w2=1-w1,axX=sx+ux*t,axY=sy+uy*t,gl=glow*Math.exp(-s*s/(0.12*K*K));
+      for(var j=0,ph0=off*dph;ph0<Math.PI;j++,ph0+=dph){
+        // A small fixed scatter, around and along the neck, so its dots read like the spheres' own irregular field
+        // instead of rows; it is tied to the ring and dot number, so it does not flicker.
+        var h1=hash(ix,j),ph=ph0+(hash(ix+0.5,j+0.25)-0.5)*0.3*dph,sn=Math.sin(ph);if(sn<=0.03)continue;
+        var c=Math.cos(ph),da=(hash(ix+0.75,j+0.6)-0.5)*aj,X=axX+vx*rho*c+ux*da,Y=axY+vy*rho*c+uy*da,Z=rho*sn;
+        var ax=X-sx,ay=Y-sy,l1=Math.sqrt(ax*ax+ay*ay+Z*Z)||1,ex=X-bx,ey=Y-by,l2=Math.sqrt(ex*ex+ey*ey+Z*Z)||1;
+        // The surface faces between the two spheres' own directions, leaning toward the nearer one.
+        var nx=w1*ax/l1+w2*ex/l2,ny=w1*ay/l1+w2*ey/l2,nz=(w1/l1+w2/l2)*Z,nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+        nx/=nl;ny/=nl;nz/=nl;
+        var diff=nx*Lx+ny*Ly+nz*Lz;if(diff<0)diff=0;
+        var wv=wave?waveAt(X,Y):null,mB=wv?wv.m:mixBase,bb=diff*0.74+0.06+(dark?gl:0)+(wv?wv.boost*(1-w):0);
+        if(bb>1)bb=1;
+        var fs=0.4+0.6*nz,dr=sz*0.46*(0.24+0.76*bb)*fs,m=mB+(1-mB)*wc;
+        // A per-dot nudge between neighbouring colour steps hides the steps.
+        var fd=smooth((qS-l1)/fS)*smooth((qB-l2)/fB);if(fd<0.02)continue;
+        buckets[Math.min(MIXL,Math.floor(m*MIXL+h1*(m>0&&m<1?1:0)))*(LV+1)+Math.round(bb*LV)].push(X,Y,dr*Math.sqrt(fd));
+      }
+    }
+    // Walk each run of the outline from its ball end and drop rings about as far apart as the dots on the spheres.
+    // Where the neck meets a sphere, its dots grow in over the same distance the sphere's dots fade out (by area,
+    // measured by the same 3D distance), so the two add up: no bare strip, no doubled line, no dot popping.
+    for(i=NS;i>=1;i--){
+      if(!pOK[i]||!pOK[i-1]){next=-1;continue;}
+      var t0=pT[i],r0=pR[i],dt=pT[i-1]-t0,dr=pR[i-1]-r0,seg=Math.sqrt(dt*dt+dr*dr);
+      if(next<0){acc=0;next=0.25*row(i);rings=997*runs++;}
+      while(next<=acc+seg){var f=seg>0?(next-acc)/seg:0;ring(i-f,t0+dt*f,r0+dr*f);next+=row(i-f);}
+      acc+=seg;
+    }
+  }
+
+  // ---- state ---------------------------------------------------------------------------------------
+  var T={rest:900,hold:1900,wave:850};
+  var phase='rest',pt=0,looping=true,waveStarted=false,mv=null;
+  var ball={x:0,y:0,s:1,rot:0,show:true},capA=0,mixBase=0,wave=null;
+  function clamp01(v){return v<0?0:v>1?1:v;}
+  function easeOut(p){return 1-Math.pow(1-p,3);}
+  function smooth(p){p=clamp01(p);return p*p*(3-2*p);}
+  function startWave(dir,now){wave={t0:now,dir:dir,flipped:false};waveStarted=true;}
+  var WV={m:0,boost:0};
+  function waveAt(x,y){
+    if(!wave){WV.m=mixBase;WV.boost=0;return WV;}
+    var p=clamp01((nowT-wave.t0)/T.wave),fr=easeOut(p)*2.4*R,dx=x-impX,dy=y-impY,d=Math.sqrt(dx*dx+dy*dy);
+    var k=smooth((fr-d)/(0.5*R)),m=wave.dir>0?k:1-k,q=(d-fr)/(0.12*R);
+    WV.m=m;WV.boost=0.42*Math.exp(-q*q)*(1-p)*smooth(p/0.12);return WV;
+  }
+  var nowT=0;
+  function setPhase(p,now){phase=p;pt=now;waveStarted=false;}
+  function setYou(you){
+    stage.classList.toggle('is-you',you);stage.classList.toggle('is-stranger',!you);
+    stateEl.textContent=you?'you':'stranger';capEl.textContent=you?'Welcome back, Ben.':'Who are you?';
+    live.textContent=you?'The sandbox is you now.':'The sandbox is a stranger again.';
+  }
+  // The ball shrinks by how deep it is, so going in and coming out look the same.
+  function sizeAt(x,y){return 1-0.75*smooth((R+r-Math.hypot(x-sx,y-sy))/sinkLen);}
+  function pathAt(xs,ys,cum,u){
+    if(cum.length<2)return [xs[0],ys[0]];
+    var j=1;while(j<cum.length-1&&cum[j]<u)j++;
+    var f=clamp01((u-cum[j-1])/(cum[j]-cum[j-1]));
+    return [xs[j-1]+(xs[j]-xs[j-1])*f,ys[j-1]+(ys[j]-ys[j-1])*f];
+  }
+  // One unbroken move along a path: steady push from rest, then steady braking to rest, so the speed rises once
+  // and falls once. The ball never stops at the sphere's edge.
+  function move(pts,o,now){
+    var xs=[ball.x],ys=[ball.y],cum=[0],L=0,i;
+    for(i=0;i<pts.length;i++){
+      var ex=pts[i][0]-xs[xs.length-1],ey=pts[i][1]-ys[ys.length-1],d=Math.sqrt(ex*ex+ey*ey);
+      if(d<0.5)continue;xs.push(pts[i][0]);ys.push(pts[i][1]);L+=d;cum.push(L);
+    }
+    var N=160,Tm=new Float64Array(N+1),du=L/N,t=0,ua=Math.max(1,o.ua),ud=Math.max(1,o.ud),VC=Math.max(1,R)/330;
+    function v(u){return Math.max(0.02,Math.min(1,Math.sqrt(u/ua),Math.sqrt(Math.max(0,L-u)/ud)));}
+    for(i=0;i<N;i++){Tm[i]=t;t+=du/v((i+0.5)*du)/VC;}
+    Tm[N]=t;
+    var fix=0;if(o.upright){var end=ball.rot+o.sgn*L/r;fix=Math.round(end/TAU)*TAU-end;}
+    mv={xs:xs,ys:ys,cum:cum,L:L,N:N,Tm:Tm,T:t,rot0:ball.rot,sgn:o.sgn,fix:fix,kind:o.kind,done:o.done};
+    setPhase('move',now);
+  }
+  function uAt(t){
+    if(t>=mv.T)return mv.L;if(t<=0)return 0;
+    var Tm=mv.Tm,lo=0,hi=mv.N;while(hi-lo>1){var m=(lo+hi)>>1;if(Tm[m]<=t)lo=m;else hi=m;}
+    return (lo+(t-Tm[lo])/((Tm[hi]-Tm[lo])||1))*mv.L/mv.N;
+  }
+  // The turn from the floor into the sandbox, rounded so the ball never jerks.
+  function bend(){
+    var c1=K*0.6,ax=cx-c1,bx=cx+inX*c1,by=cy+inY*c1,p=[];
+    for(var i=0;i<=8;i++){var t=i/8,a=(1-t)*(1-t),b=2*t*(1-t),c=t*t;p.push([a*ax+b*cx+c*bx,a*cy+b*cy+c*by]);}
+    return p;
+  }
+  // In: roll along the floor, straight on into the sandbox, and settle deep inside. Braking starts a little before
+  // the surfaces meet, so the join happens while the ball is still moving, just more slowly.
+  function goIn(now){
+    var pts=bend().filter(function(p){return p[0]>ball.x+0.5;});pts.push([dX,dY]);
+    move(pts,{kind:'in',sgn:1,ua:Math.max(r*0.8,(cx-ball.x)*0.4),ud:sinkLen+3*K,done:becomeYou},now);
+  }
+  // The ball is all the way in: the sandbox wears its white circle where it faces you right now, then turns with it.
+  function becomeYou(n){
+    ball.show=false;setPhase('inside',n);
+    var ya=yaw(n),c=Math.cos(ya),s=Math.sin(ya);
+    bigCap={ax:-s,ay:0,az:c,e1x:c,e1y:0,e1z:s,e2x:0,e2y:1,e2z:0};
+  }
+  // A size change mid-move (a phone turning): land the move where it was heading, at the new size, instead of undoing it.
+  function settle(now){
+    var k=mv?mv.kind:'',touched=!!(mv&&mv.touched);mv=null;wave=null;capA=0;
+    if(k==='in'&&touched){mixBase=1;setYou(true);becomeYou(now);}
+    else{mixBase=0;setYou(false);ball.x=hx;ball.y=hy;ball.s=1;ball.rot=0;ball.show=true;setPhase('rest',now);}
+  }
+  // Out: the sandbox pushes the ball back the way it came; the neck stretches and lets go; the ball rolls home upright.
+  function goOut(now){
+    ball.x=dX;ball.y=dY;ball.s=sizeAt(dX,dY);ball.show=true;
+    var pts=bend().reverse();pts.push([hx,hy]);
+    var c0=capA;
+    move(pts,{kind:'out',sgn:-1,upright:true,ua:sinkLen+2*K,ud:(cx-hx)*0.65,done:function(n){setPhase('rest',n);}},now);
+    mv.cap0=c0;
+  }
+  function home(now){
+    var L=Math.max(0,ball.x-hx);
+    move([[hx,hy]],{kind:'home',sgn:-1,upright:true,ua:L*0.4,ud:L*0.6,done:function(n){setPhase('rest',n);}},now);
+  }
+  function update(now){
+    nowT=now;var t=now-pt;
+    // The labels change when the colour wave has swept about half the sphere (the wave starts fast), so words and colour agree.
+    if(wave&&!wave.flipped&&now-wave.t0>=T.wave*0.2){wave.flipped=true;setYou(wave.dir>0);}
+    if(wave&&now-wave.t0>=T.wave){mixBase=wave.dir>0?1:0;wave=null;}
+    switch(phase){
+      case 'rest':
+        ball.show=true;ball.s=1;ball.y=hy;
+        if(looping&&t>T.rest)goIn(now);break;
+      case 'move':
+        var u=uAt(t);var p=pathAt(mv.xs,mv.ys,mv.cum,u);ball.x=p[0];ball.y=p[1];
+        ball.rot=mv.rot0+mv.sgn*u/r+mv.fix*(mv.L>0?u/mv.L:1);ball.s=sizeAt(ball.x,ball.y);ball.show=true;
+        var D=Math.hypot(ball.x-sx,ball.y-sy);
+        // The gold spreads from the seam once about a third of the ball is in; the blue once it is about half out.
+        if(mv.kind==='in'&&D<R+r*ball.s+K)mv.touched=true;
+        if(mv.kind==='in'&&!waveStarted&&D<=R+r*0.3)startWave(1,now);
+        if(mv.kind==='out'){capA=mv.cap0*clamp01(1-t/220);if(!waveStarted&&D>=R-r*0.1)startWave(-1,now);}
+        if(t>=mv.T){var fn=mv.done;mv=null;fn(now);}
+        break;
+      case 'inside':
+        capA=clamp01(t/350);
+        if(looping&&t>T.hold)goOut(now);break;
+    }
+  }
+  function draw(now){
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+    var mixNow=wave?(wave.dir>0?clamp01((now-wave.t0)/T.wave):1-clamp01((now-wave.t0)/T.wave)):mixBase;
+    // A soft halo behind the sandbox, tinted by who it is.
+    var hc=[0,1,2].map(function(i){return (COLD[i]+(AMB[i]-COLD[i])*mixNow)|0;});
+    // Kept inside the canvas so it never ends in a hard edge.
+    var gr=Math.max(R*1.05,Math.min(R*1.6,sy,W-sx,H-sy,sx));
+    var g=ctx.createRadialGradient(sx,sy,R*0.2,sx,sy,gr);
+    g.addColorStop(0,'rgba('+hc+','+(dark?0.16:0.12)+')');g.addColorStop(1,'rgba('+hc+',0)');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    var bs=ball.show,R1=R,R2=r*ball.s,D=bs?Math.hypot(ball.x-sx,ball.y-sy):1e9;
+    // Floor shadows; the ball's fades as it sinks in.
+    shadow(sx,R1);if(bs){var ex=clamp01((D-(R1-r))/(2*r));if(ex>0.02)shadow(ball.x,R2*ex);}
+    sphere(big,sx,sy,R1,sBig,{yaw:yaw(now),mix:mixBase,wave:!!wave,cap:capA>0.02?1:0,capAxis:bigCap,capAngle:0.5*easeOut(capA),cut:bs?{x:ball.x,y:ball.y,r:R2+K,f:1.5*sBig}:null});
+    if(bs){
+      // The white circle shrinks evenly as the join nears it, so it melts away instead of being sliced by the cut.
+      // cc is where the cut sits on the ball (cosine from the ball's side facing away from the sandbox).
+      var cc=((R1+K)*(R1+K)-D*D-R2*R2)/(2*D*R2),capB=cc<=-1?0.64:cc>=0?0:Math.max(0,Math.min(0.64,Math.asin(-cc)-0.16));if(capB<0.12)capB=0;
+      sphere(small,ball.x,ball.y,R2,sSmall*Math.max(0.6,ball.s),{roll:ball.rot,mix:1,cap:1,capAxis:FRONT,capAngle:capB,cut:{x:sx,y:sy,r:R1+K,f:2.5*Math.max(1.4,sSmall*ball.s)}});
+      // Close enough to reach for each other, and not yet (or no longer) buried deep inside: draw the join.
+      if(D>1&&D<R1+R2+K&&R1-D-R2<K)neck(R1,R2,D);
+    }
+    flush();
+  }
+  // The sandbox turns slowly, about one turn every 20 seconds.
+  function yaw(now){return reduce?0.4:now*0.00031;}
+  function shadow(x,rad){
+    ctx.save();ctx.translate(x,floorY+2);ctx.scale(1,0.14);
+    var g=ctx.createRadialGradient(0,0,0,0,0,rad);
+    g.addColorStop(0,dark?'rgba(0,0,0,.55)':'rgba(70,50,20,.18)');g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,rad,0,TAU);ctx.fill();ctx.restore();
+  }
+
+  // ---- loop, visibility, interaction ----------------------------------------------------------------
+  var running=false,onScreen=true;
+  function frame(now){if(!running)return;if(R>0){update(now);draw(now);}requestAnimationFrame(frame);}
+  function start(){if(running||reduce||document.hidden||!onScreen)return;running=true;var n=performance.now();if(looping)restart(n);requestAnimationFrame(frame);}
+  function stop(){running=false;}
+  function restart(now){mv=null;wave=null;mixBase=0;capA=0;ball.x=hx;ball.y=hy;ball.s=1;ball.rot=0;ball.show=true;setYou(false);setPhase('rest',now);}
+  document.addEventListener('visibilitychange',function(){if(document.hidden)stop();else start();});
+  if('IntersectionObserver' in window)new IntersectionObserver(function(es){onScreen=es[0].isIntersecting;if(onScreen)start();else stop();}).observe(scene);
+
+  function takeOver(){looping=false;}
+  function act(){
+    var now=performance.now();takeOver();
+    if(reduce){var you=phase!=='inside';phase=you?'inside':'rest';mixBase=you?1:0;capA=you?1:0;ball.show=!you;setYou(you);draw(now);return;}
+    if(phase==='rest')goIn(now);else if(phase==='inside')goOut(now);
+  }
+  function local(e){var rc=scene.getBoundingClientRect();return {x:e.clientX-rc.left,y:e.clientY-rc.top};}
+  function overBall(p){return ball.show&&Math.hypot(p.x-ball.x,p.y-ball.y)<r*1.3;}
+  function overBig(p){return Math.hypot(p.x-sx,p.y-sy)<R;}
+  var drag=null;
+  scene.addEventListener('pointerdown',function(e){
+    var p=local(e);
+    if(!reduce&&phase==='rest'&&overBall(p)){takeOver();drag={id:e.pointerId,x0:p.x,bx:ball.x,moved:false};scene.setPointerCapture(e.pointerId);scene.style.cursor='grabbing';}
+  });
+  scene.addEventListener('pointermove',function(e){
+    var p=local(e);
+    if(drag&&e.pointerId===drag.id){
+      var nx=Math.max(hx,Math.min(cx,drag.bx+(p.x-drag.x0)));if(Math.abs(p.x-drag.x0)>4)drag.moved=true;
+      ball.rot+=(nx-ball.x)/r;ball.x=nx;pt=performance.now();return;
+    }
+    scene.style.cursor=(phase==='rest'&&overBall(p))?'grab':((phase==='rest'||phase==='inside')&&overBig(p))?'pointer':'default';
+  });
+  function endDrag(e,cancelled){
+    if(!drag||e.pointerId!==drag.id)return false;
+    var d=drag;drag=null;scene.style.cursor='';var now=performance.now();
+    // A cancelled touch (the page scrolled) is not a tap: leave the ball where it is, or roll it home if it was moved.
+    if(cancelled){if(d.moved)home(now);return true;}
+    if(!d.moved){act();return true;}
+    if(ball.x>hx+(cx-hx)*0.45)goIn(now);else home(now);
+    return true;
+  }
+  var handled=false;
+  scene.addEventListener('pointerup',function(e){handled=endDrag(e);});
+  scene.addEventListener('pointercancel',function(e){endDrag(e,true);});
+  scene.addEventListener('click',function(){if(handled){handled=false;return;}act();});
+  scene.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();act();}});
+
+  // ---- theme and size changes -----------------------------------------------------------------------
+  readTheme();
+  if(window.matchMedia)matchMedia('(prefers-color-scheme: light)').addEventListener('change',function(){readTheme();if(reduce)draw(performance.now());});
+  new MutationObserver(function(){readTheme();if(reduce)draw(performance.now());}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class','style']});
+  if('ResizeObserver' in window)new ResizeObserver(function(){layout();if(reduce||!running)draw(performance.now());}).observe(scene);
+  layout();restart(performance.now());draw(performance.now());start();
+
+  // ---- copy the install and run commands --------------------------------------------------------------
+  // A text button says "Copied"; the icon button swaps to a check and says it to screen readers.
+  document.querySelectorAll('[data-copy]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var el=document.querySelector(btn.getAttribute('data-copy'));
+      var text=Array.prototype.map.call(el.childNodes,function(n){return n.nodeType===3?n.textContent:(n.classList&&n.classList.contains('p')?'':n.textContent);}).join('').trim();
+      var icon=btn.classList.contains('copy-ico'),old=btn.dataset.label||(btn.dataset.label=icon?btn.getAttribute('aria-label'):btn.textContent);
+      function say(t){if(icon){btn.setAttribute('aria-label',t);if(t!==old)document.getElementById('copy-live').textContent=t;}else btn.textContent=t;}
+      function done(){say('Copied');btn.classList.add('done');setTimeout(function(){say(old);btn.classList.remove('done');},1600);}
+      function fallback(){try{var r=document.createRange();r.selectNodeContents(el);var s=window.getSelection();s.removeAllRanges();s.addRange(r);say('Selected');setTimeout(function(){say(old);},1600);}catch(e){}}
+      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,fallback);}else fallback();
+    });
+  });
+  // Tapping the command itself copies it too.
+  document.querySelectorAll('.chip').forEach(function(chip){
+    chip.addEventListener('click',function(e){if(!e.target.closest('.copy-ico'))chip.querySelector('.copy-ico').click();});
+  });
+
+  // ---- Setup for agents ----------------------------------------------------------------------------
+  // Copies the onboarding prompt exactly as injected. Success: the icon becomes a check and the label says
+  // "Copied" for 2 s. Clipboard unavailable or refused: the same text appears in a box, selected.
+  var setupBtn=document.getElementById('setup-btn'),setupLbl=setupBtn.querySelector('.lbl');
+  var setupFb=document.getElementById('setup-fallback'),setupTa=document.getElementById('setup-text');
+  var setupPrompt=null;
+  try{setupPrompt=JSON.parse(document.getElementById('setup-prompt').textContent);}catch(e){}
+  if(typeof setupPrompt!=='string'){setupBtn.disabled=true;}
+  var setupTimer=0;
+  function setupShowText(){
+    setupTa.value=setupPrompt;setupFb.hidden=false;
+    document.getElementById('copy-live').textContent='Copying was blocked. The setup prompt is in the text box.';
+    setupTa.focus();setupTa.select();
+  }
+  setupBtn.addEventListener('click',function(){
+    if(typeof setupPrompt!=='string')return;
+    function ok(){
+      setupBtn.classList.add('done');setupLbl.textContent='Copied';
+      document.getElementById('copy-live').textContent='Setup prompt copied';
+      clearTimeout(setupTimer);
+      setupTimer=setTimeout(function(){setupBtn.classList.remove('done');setupLbl.textContent='Setup for agents';},2000);
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(setupPrompt).then(ok,setupShowText);}else setupShowText();
+  });
+})();
+</script>
+</body>
+</html>

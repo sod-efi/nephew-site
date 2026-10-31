@@ -145,6 +145,12 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
   .hero{row-gap:6px}
   .hero .lede{padding-top:4px}
 }
+/* Breathing room (owner, 2026-10-31): more space under the headline and above the Setup button on
+   windows tall enough to keep the scene in the first screen; short windows stay compact. */
+@media (min-width:860px) and (min-height:721px),(min-width:720px) and (max-width:859px) and (min-height:820px){.hero h1{margin-bottom:12px}.agents{margin-top:12px}}
+@media (min-width:860px) and (min-height:721px){.hero-install{gap:14px}}
+@media (max-width:399px) and (min-height:640px){.hero h1{margin-bottom:6px}.agents{margin-top:8px}}
+@media (max-width:719px) and (min-height:700px){.hero h1{margin-bottom:10px}.agents{margin-top:12px}}
 @media (max-width:719px) and (max-height:600px){.stage .scene{height:clamp(150px,min(50vw,32svh),300px)}}
 /* Short windows (a laptop at 125% zoom, a browser with extra bars): tighter header and headline. */
 @media (min-width:720px) and (max-height:680px){

@@ -4,6 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0C0F14">
 <title>nephew.ai · Bring your login, device identity, and IP to any sandbox</title>
 <meta name="description" content="Nephew carries your logged-in browser identity into any agent sandbox: your login, device identity and IP, in a bundle you hold.">
 <meta property="og:title" content="nephew.ai">
@@ -30,22 +32,7 @@
   --font-mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,monospace;
   color-scheme:dark;
 }
-@media (prefers-color-scheme: light){
-  :root:not([data-theme="dark"]){
-    --bg:#EEE9DF; --bg-2:#F7F3EB; --fg:#17141A; --fg-2:#4B463F; --muted:#6B655C; --line:#D8D1C3;
-    --amber:#9C6B0F; --amber-soft:rgba(156,107,15,.2);
-    --cold:#2E6DB0; --cold-soft:rgba(46,109,176,.12); --ok:#1E8A55;
-    --amber-ink:#855A0B; --cold-ink:#2A64A3;
-    color-scheme:light;
-  }
-}
-:root[data-theme="light"]{
-  --bg:#EEE9DF; --bg-2:#F7F3EB; --fg:#17141A; --fg-2:#4B463F; --muted:#6B655C; --line:#D8D1C3;
-  --amber:#9C6B0F; --amber-soft:rgba(156,107,15,.2);
-  --cold:#2E6DB0; --cold-soft:rgba(46,109,176,.12); --ok:#1E8A55;
-    --amber-ink:#855A0B; --cold-ink:#2A64A3;
-  color-scheme:light;
-}
+/* Always dark, whatever the visitor's system theme (owner, 2026-10-31): the scene and the brass read best on black. */
 
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -73,10 +60,6 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
 .mk-dots{fill:var(--amber)}
 .mk-cap{fill:#F6F1E5}
 .mk-bg{fill:none}
-/* Light pages: the faintest dots nearly vanish on cream, so a faint amber body sits behind them and a hairline edges the white circle. */
-@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .mk-cap{fill:#fff;stroke:rgba(156,107,15,.45);stroke-width:.6}:root:not([data-theme="dark"]) .mk-bg{fill:var(--amber-soft)}}
-:root[data-theme="light"] .mk-cap{fill:#fff;stroke:rgba(156,107,15,.45);stroke-width:.6}
-:root[data-theme="light"] .mk-bg{fill:var(--amber-soft)}
 .mk-n{fill:none;stroke:#17141A}
 .wordmark .tld{color:var(--fg-2)}
 .wordmark{font-family:var(--font-display);font-weight:800;font-size:1.25rem;letter-spacing:-0.01em;line-height:1}
@@ -680,7 +663,6 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
 
   // ---- theme and size changes -----------------------------------------------------------------------
   readTheme();
-  if(window.matchMedia)matchMedia('(prefers-color-scheme: light)').addEventListener('change',function(){readTheme();if(reduce)draw(performance.now());});
   new MutationObserver(function(){readTheme();if(reduce)draw(performance.now());}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class','style']});
   if('ResizeObserver' in window)new ResizeObserver(function(){layout();if(reduce||!running)draw(performance.now());}).observe(scene);
   layout();restart(performance.now());draw(performance.now());start();

@@ -150,15 +150,16 @@ You pay for profiles — identities you own and can revoke or take
 elsewhere — and for run-hours, the time an agent spends logged in as you.
 No per-seat fees.
 
-- Free — $0: 2 profiles, BYO mode; 1 hosted run-hour trial; concurrency 1
+- Free — $0: 2 profiles, BYO mode; concurrency 1
 - BYO — $19/mo: 10 profiles on your own Modal, Steel, Browser Use,
   Browserbase or Bright Data accounts; unlimited run-hours (you pay your
   providers directly); extra profiles $3/mo; concurrency 3
-- Hosted — $59/mo: 5 profiles, each with its own dedicated ISP IP; 30
-  run-hours included, then $0.60/run-hour; concurrency 3
-- Hosted Team — $199/mo: 20 profiles with dedicated ISP IPs; 200
-  run-hours included, then $0.50/run-hour; profile sharing, priority
-  support; concurrency 10
+- Hosted — $59/mo (opening soon; not yet available): 5 profiles, each
+  with its own dedicated ISP IP; 30 run-hours included, then
+  $0.60/run-hour; concurrency 3
+- Hosted Team — $199/mo (opening soon; not yet available): 20 profiles
+  with dedicated ISP IPs; 200 run-hours included, then $0.50/run-hour;
+  profile sharing, priority support; concurrency 10
 - Enterprise — custom: unlimited profiles; own-stack / BYOC deploy, SSO,
   custom regions, SLA
 

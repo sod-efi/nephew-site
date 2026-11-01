@@ -185,6 +185,10 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
 .plan.wide{margin-top:12px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 22px}
 .plan.wide .price{font-size:1.6rem}
 .plan.wide ul{display:flex;flex-wrap:wrap;gap:6px 20px}
+/* Hosted tiers are on show but not for sale yet (owner, 2026-10-31). The label floats right on the name's line, its
+   negative margins keep the line (and so the prices) level, and with a large browser font it drops below the
+   name instead of covering it. */
+.soon{float:right;margin:-3px -2px -3px 8px;padding:3px 8px;border-radius:999px;background:var(--amber-soft);color:var(--amber-ink);font-size:.62rem;letter-spacing:.1em;white-space:nowrap}
 .pricing .notes{margin-top:22px;display:grid;gap:4px;font-size:.92rem;color:var(--fg-2)}
 .pricing .notes a{color:var(--amber-ink)}
 
@@ -254,12 +258,12 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
     <p class="intro">You pay for profiles, the identities you own and can revoke or take elsewhere, and for <span class="nb">run-hours</span>, the time an agent spends logged in as you. No per-seat&nbsp;fees.</p>
     <div class="plans">
       <article class="plan"><h3>Free</h3><p class="price">$0</p>
-        <ul><li>2 profiles</li><li>On your own cloud accounts</li><li>1 hosted run-hour to try</li><li>1 run at a time</li></ul></article>
+        <ul><li>2 profiles</li><li>On your own cloud accounts</li><li>1 run at a time</li></ul></article>
       <article class="plan"><h3>BYO</h3><p class="price">$19<small>/mo</small></p>
         <ul><li>10 profiles</li><li>On your own cloud accounts</li><li>Unlimited run-hours; you pay your providers directly</li><li>Extra profiles $3/mo</li><li>3 runs at a time</li></ul></article>
-      <article class="plan"><h3>Hosted</h3><p class="price">$59<small>/mo</small></p>
+      <article class="plan"><h3>Hosted<span class="sr">, </span> <span class="soon">Opening soon</span></h3><p class="price">$59<small>/mo</small></p>
         <ul><li>5 profiles</li><li>Run on our cloud</li><li>30 run-hours included, then $0.60 an hour</li><li>3 runs at a time</li></ul></article>
-      <article class="plan"><h3>Hosted Team</h3><p class="price">$199<small>/mo</small></p>
+      <article class="plan"><h3>Hosted Team<span class="sr">, </span> <span class="soon">Opening soon</span></h3><p class="price">$199<small>/mo</small></p>
         <ul><li>20 profiles</li><li>Run on our cloud</li><li>200 run-hours included, then $0.50 an hour</li><li>Profile sharing and priority support</li><li>10 runs at a time</li></ul></article>
     </div>
     <article class="plan wide"><h3>Enterprise</h3><p class="price">Custom</p>

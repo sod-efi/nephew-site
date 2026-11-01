@@ -6,7 +6,7 @@
 # Nothing else is written. No sudo. Fails closed on any mismatch.
 set -eu
 
-VERSION="0.4.2"
+VERSION="0.5.0"
 TARBALL="nephew-v${VERSION}.tar.gz"
 # The tarball's sha256, written into the published copy of this script by
 # the release build. SHA256SUMS is fetched from the same place as the

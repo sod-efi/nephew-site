@@ -24,7 +24,7 @@
 :root{
   --bg:#0C0F14; --bg-2:#12161D; --fg:#EDE8DD; --fg-2:#BFB8AB; --muted:#8A8478; --line:#262C35;
   --amber:#F2B134; --amber-soft:rgba(242,177,52,.14);
-  --cold:#7FB0E0; --cold-soft:rgba(127,176,224,.12); --ok:#52D48E;
+  --cold:#7FB0E0; --cold-soft:rgba(127,176,224,.12); --ok:#52D48E; --bad:#F08A84;
   --amber-ink:var(--amber); --cold-ink:var(--cold);
   --top-h:51px;
   --font-display:"Archivo","Arial Black","Helvetica Neue",Arial,sans-serif;
@@ -189,6 +189,22 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
    negative margins keep the line (and so the prices) level, and with a large browser font it drops below the
    name instead of covering it. */
 .soon{float:right;margin:-3px -2px -3px 8px;padding:3px 8px;border-radius:999px;background:var(--amber-soft);color:var(--amber-ink);font-size:.62rem;letter-spacing:.1em;white-space:nowrap}
+/* "Notify me" under the Hosted tiers (owner approved the mockup, 2026-10-31). The form is hidden in the markup and
+   shown by the script only when the section names a list to post to (data-notify), so a page without one never shows
+   a box that can't keep the address. The address goes to nephew-notify (its own repo), nowhere else. */
+.plan.later{display:flex;flex-direction:column}
+.notify{display:flex;gap:6px;margin-top:auto;padding-top:6px}
+.notify[hidden],.notify-msg[hidden]{display:none}
+.notify input[type=email]{flex:1 1 auto;min-width:0;height:44px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);font:inherit;font-size:1rem}
+.notify input[type=email]::placeholder{color:var(--muted)}
+.notify input[type=email]:focus{border-color:var(--amber)}
+.notify.bad input[type=email]{border-color:var(--bad)}
+.notify button{flex:none;height:44px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--amber-ink);font:inherit;font-size:.85rem;font-weight:700;cursor:pointer}
+.notify button:hover{border-color:var(--amber)}
+.notify button:disabled{opacity:.6;cursor:default}
+.notify-msg{margin:-4px 0 0;font-size:.92rem;color:var(--bad)}
+.notify-msg.done{margin:auto 0 0;padding-top:6px;color:var(--fg)}
+.notify-msg:focus{outline:none}
 .pricing .notes{margin-top:22px;display:grid;gap:4px;font-size:.92rem;color:var(--fg-2)}
 .pricing .notes a{color:var(--amber-ink)}
 
@@ -253,7 +269,7 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
 
 </div>
 
-  <section class="wrap pricing" id="pricing" aria-labelledby="pricing-h">
+  <section class="wrap pricing" id="pricing" aria-labelledby="pricing-h" data-notify="https://nephew-notify-production.up.railway.app/notify">
     <h2 id="pricing-h">Pricing</h2>
     <p class="intro">You pay for profiles, the identities you own and can revoke or take elsewhere, and for <span class="nb">run-hours</span>, the time an agent spends logged in as you. No per-seat&nbsp;fees.</p>
     <div class="plans">
@@ -261,10 +277,12 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
         <ul><li>2 profiles</li><li>On your own cloud accounts</li><li>1 run at a time</li></ul></article>
       <article class="plan"><h3>BYO</h3><p class="price">$19<small>/mo</small></p>
         <ul><li>10 profiles</li><li>On your own cloud accounts</li><li>Unlimited run-hours; you pay your providers directly</li><li>Extra profiles $3/mo</li><li>3 runs at a time</li></ul></article>
-      <article class="plan"><h3>Hosted<span class="sr">, </span> <span class="soon">Opening soon</span></h3><p class="price">$59<small>/mo</small></p>
-        <ul><li>5 profiles</li><li>Run on our cloud</li><li>30 run-hours included, then $0.60 an hour</li><li>3 runs at a time</li></ul></article>
-      <article class="plan"><h3>Hosted Team<span class="sr">, </span> <span class="soon">Opening soon</span></h3><p class="price">$199<small>/mo</small></p>
-        <ul><li>20 profiles</li><li>Run on our cloud</li><li>200 run-hours included, then $0.50 an hour</li><li>Profile sharing and priority support</li><li>10 runs at a time</li></ul></article>
+      <article class="plan later"><h3>Hosted<span class="sr">, </span> <span class="soon">Opening soon</span></h3><p class="price">$59<small>/mo</small></p>
+        <ul><li>5 profiles</li><li>Run on our cloud</li><li>30 run-hours included, then $0.60 an hour</li><li>3 runs at a time</li></ul>
+        <form class="notify" data-plan="hosted" hidden novalidate><label class="sr" for="notify-hosted">Email to hear when Hosted opens</label><input id="notify-hosted" type="email" inputmode="email" autocomplete="email" maxlength="254" placeholder="Your email" required aria-describedby="notify-hosted-msg"><input class="sr trap" type="text" name="nx-field" tabindex="-1" autocomplete="off" aria-hidden="true" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other"><button type="submit">Notify me</button></form><p class="notify-msg" id="notify-hosted-msg" tabindex="-1" hidden></p></article>
+      <article class="plan later"><h3>Hosted Team<span class="sr">, </span> <span class="soon">Opening soon</span></h3><p class="price">$199<small>/mo</small></p>
+        <ul><li>20 profiles</li><li>Run on our cloud</li><li>200 run-hours included, then $0.50 an hour</li><li>Profile sharing and priority support</li><li>10 runs at a time</li></ul>
+        <form class="notify" data-plan="hosted-team" hidden novalidate><label class="sr" for="notify-hosted-team">Email to hear when Hosted Team opens</label><input id="notify-hosted-team" type="email" inputmode="email" autocomplete="email" maxlength="254" placeholder="Your email" required aria-describedby="notify-hosted-team-msg"><input class="sr trap" type="text" name="nx-field" tabindex="-1" autocomplete="off" aria-hidden="true" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other"><button type="submit">Notify me</button></form><p class="notify-msg" id="notify-hosted-team-msg" tabindex="-1" hidden></p></article>
     </div>
     <article class="plan wide"><h3>Enterprise</h3><p class="price">Custom</p>
       <ul><li>Unlimited profiles</li><li>Your own stack or cloud</li><li>SSO, custom regions, SLA</li></ul></article>
@@ -718,6 +736,44 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
       setupTimer=setTimeout(function(){setupBtn.classList.remove('done');setupLbl.textContent='Setup prompt for agents';setupBtn.style.minWidth='';},2000);
     }
     if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(setupPrompt).then(ok,setupShowText);}else setupShowText();
+  });
+})();
+</script>
+<script>
+// "Notify me": posts {plan, email} to the list named in #pricing[data-notify] and keeps the typed address on any error.
+(function(){
+  'use strict';
+  var pricing=document.getElementById('pricing'),url=pricing&&pricing.getAttribute('data-notify');
+  if(!url||!window.fetch)return;
+  var live=document.getElementById('copy-live');
+  var names={'hosted':'Hosted','hosted-team':'Hosted Team'};
+  var AGAIN='Couldn’t save that. Try again in a minute.';
+  Array.prototype.forEach.call(document.querySelectorAll('.notify'),function(f){
+    var input=f.querySelector('input[type=email]'),trap=f.querySelector('.trap'),btn=f.querySelector('button'),msg=f.nextElementSibling;
+    var plan=f.getAttribute('data-plan');
+    function say(text,done){
+      msg.textContent=text;msg.className='notify-msg'+(done?' done':'');msg.hidden=false;
+      if(done){msg.focus();return;}
+      if(live){live.textContent='';setTimeout(function(){live.textContent=text;},60);}
+    }
+    function bad(){f.classList.add('bad');input.setAttribute('aria-invalid','true');say('Check the address.');input.focus();}
+    f.hidden=false;
+    input.addEventListener('input',function(){f.classList.remove('bad');input.removeAttribute('aria-invalid');msg.hidden=true;});
+    f.addEventListener('submit',function(e){
+      e.preventDefault();
+      var email=input.value.trim();
+      if(!email||!input.checkValidity())return bad();
+      btn.disabled=true;
+      var ctl=window.AbortController?new AbortController():null,timer=ctl?setTimeout(function(){ctl.abort();},12000):0;
+      fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan:plan,email:email,website:trap.value}),signal:ctl?ctl.signal:undefined})
+        .then(function(r){return r.json().catch(function(){return {};}).then(function(b){return {status:r.status,body:b};});})
+        .then(function(res){
+          clearTimeout(timer);btn.disabled=false;
+          if(res.status===200){f.hidden=true;say('Thanks. We’ll email you when '+names[plan]+' opens.',true);return;}
+          if(res.body&&res.body.error==='email')return bad();
+          say(res.status===429?'Too many tries. Try again in an hour.':res.body&&res.body.error==='busy'?'Lots of sign-ups right now. Try again in an hour.':AGAIN);
+        },function(){clearTimeout(timer);btn.disabled=false;say(AGAIN);});
+    });
   });
 })();
 </script>

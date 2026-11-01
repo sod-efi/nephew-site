@@ -164,7 +164,7 @@ No per-seat fees.
 - Free — $0: 2 profiles, BYO mode; concurrency 1
 - BYO — $19/mo: 10 profiles on your own Modal, Steel, Browser Use,
   Browserbase or Bright Data accounts; unlimited run-hours (you pay your
-  providers directly); extra profiles $3/mo; concurrency 3
+  providers directly); extra profiles $3/mo (nephew profiles add); concurrency 3
 - Hosted — $59/mo (opening soon; not yet available): 5 profiles, each
   with its own dedicated ISP IP; 30 run-hours included, then
   $0.60/run-hour; concurrency 3

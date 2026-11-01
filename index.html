@@ -207,6 +207,18 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
 .notify-msg:focus{outline:none}
 .pricing .notes{margin-top:22px;display:grid;gap:4px;font-size:.92rem;color:var(--fg-2)}
 .pricing .notes a{color:var(--amber-ink)}
+/* "Get BYO" (billing): the button sits at the BYO card's foot. It is hidden in the markup and shown by the
+   billing script only when the section names a billing service (data-billing) whose /config says checkout
+   is open, so a page without one never shows a button that can't sell anything. The service is
+   nephew-billing (its own repo); the click posts /checkout there and follows the Stripe URL it returns. */
+.plan.buy{display:flex;flex-direction:column}
+.plan-cta{display:flex;align-items:center;justify-content:center;margin-top:auto;padding-top:6px}
+.plan-cta[hidden]{display:none}
+.plan-cta button{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;padding:0 14px;border:1px solid var(--amber);border-radius:10px;background:var(--amber);color:#1A1406;font:inherit;font-size:.92rem;font-weight:700;cursor:pointer}
+.plan-cta button:hover{filter:brightness(1.06)}
+.plan-cta button:disabled{opacity:.6;cursor:default;filter:none}
+.buy-msg{margin:-4px 0 0;font-size:.92rem;color:var(--bad,#F08A84)}
+.buy-msg[hidden]{display:none}
 
 /* Footer: the payload's links, exactly as the install flow names them. */
 .foot{margin-top:56px;border-top:1px solid var(--line)}
@@ -269,14 +281,15 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
 
 </div>
 
-  <section class="wrap pricing" id="pricing" aria-labelledby="pricing-h" data-notify="https://nephew-notify-production.up.railway.app/notify">
+  <section class="wrap pricing" id="pricing" aria-labelledby="pricing-h" data-notify="https://nephew-notify-production.up.railway.app/notify" data-billing="https://nephew-billing-production.up.railway.app">
     <h2 id="pricing-h">Pricing</h2>
     <p class="intro">You pay for profiles, the identities you own and can revoke or take elsewhere, and for <span class="nb">run-hours</span>, the time an agent spends logged in as you. No per-seat&nbsp;fees.</p>
     <div class="plans">
       <article class="plan"><h3>Free</h3><p class="price">$0</p>
         <ul><li>2 profiles</li><li>On your own cloud accounts</li><li>1 run at a time</li></ul></article>
-      <article class="plan"><h3>BYO</h3><p class="price">$19<small>/mo</small></p>
-        <ul><li>10 profiles</li><li>On your own cloud accounts</li><li>Unlimited run-hours; you pay your providers directly</li><li>Extra profiles $3/mo</li><li>3 runs at a time</li></ul></article>
+      <article class="plan buy"><h3>BYO</h3><p class="price">$19<small>/mo</small></p>
+        <ul><li>10 profiles</li><li>On your own cloud accounts</li><li>Unlimited run-hours; you pay your providers directly</li><li>Extra profiles $3/mo</li><li>3 runs at a time</li></ul>
+        <p class="plan-cta" id="byo-cta" hidden><button type="button" id="get-byo">Get BYO</button></p><p class="buy-msg" id="byo-msg" role="alert" hidden></p></article>
       <article class="plan later"><h3>Hosted<span class="sr">, </span> <span class="soon">Opening soon</span></h3><p class="price">$59<small>/mo</small></p>
         <ul><li>5 profiles</li><li>Run on our cloud</li><li>30 run-hours included, then $0.60 an hour</li><li>3 runs at a time</li></ul>
         <form class="notify" data-plan="hosted" hidden novalidate><label class="sr" for="notify-hosted">Email to hear when Hosted opens</label><input id="notify-hosted" type="email" inputmode="email" autocomplete="email" maxlength="254" placeholder="Your email" required aria-describedby="notify-hosted-msg"><input class="sr trap" type="text" name="nx-field" tabindex="-1" autocomplete="off" aria-hidden="true" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other"><button type="submit">Notify me</button></form><p class="notify-msg" id="notify-hosted-msg" tabindex="-1" hidden></p></article>
@@ -774,6 +787,42 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
           say(res.status===429?'Too many tries. Try again in an hour.':res.body&&res.body.error==='busy'?'Lots of sign-ups right now. Try again in an hour.':AGAIN);
         },function(){clearTimeout(timer);btn.disabled=false;say(AGAIN);});
     });
+  });
+})();
+</script>
+<script>
+// "Get BYO": asks the billing service named in #pricing[data-billing] whether checkout is open and only
+// then shows the button. Clicking posts /checkout and follows the Stripe URL it returns. If the service is
+// unreachable or checkout is closed the card stays exactly as it was; a failed click says so under the
+// button and leaves it retryable. The service is nephew-billing (its own repo).
+(function(){
+  'use strict';
+  var pricing=document.getElementById('pricing'),base=pricing&&pricing.getAttribute('data-billing');
+  var cta=document.getElementById('byo-cta'),btn=document.getElementById('get-byo'),msg=document.getElementById('byo-msg');
+  var live=document.getElementById('copy-live');
+  if(!base||!cta||!btn||!msg||!window.fetch)return;
+  base=base.replace(/\/+$/,'');
+  function call(path,opts){
+    var ctl=window.AbortController?new AbortController():null,timer=ctl?setTimeout(function(){ctl.abort();},12000):0;
+    var o={signal:ctl?ctl.signal:undefined};for(var k in opts)o[k]=opts[k];
+    return fetch(base+path,o).then(function(r){
+      return r.json().catch(function(){return {};}).then(function(b){return {status:r.status,body:b};});
+    }).then(function(res){clearTimeout(timer);return res;},function(err){clearTimeout(timer);throw err;});
+  }
+  function say(text){
+    msg.textContent=text;msg.hidden=false;
+    if(live){live.textContent='';setTimeout(function(){live.textContent=text;},60);}
+  }
+  call('/config').then(function(res){
+    if(res.status===200&&res.body&&res.body.checkout===true)cta.hidden=false;
+  },function(){});
+  btn.addEventListener('click',function(){
+    btn.disabled=true;msg.hidden=true;
+    call('/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan:'byo'})}).then(function(res){
+      if(res.status===200&&res.body&&res.body.url){window.location.href=res.body.url;return;}
+      btn.disabled=false;
+      say(res.status===429?'Too many tries. Wait a minute, then try again.':'Checkout didn’t open. Try again in a minute.');
+    },function(){btn.disabled=false;say('Checkout didn’t open. Try again in a minute.');});
   });
 })();
 </script>

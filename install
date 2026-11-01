@@ -6,13 +6,13 @@
 # Nothing else is written. No sudo. Fails closed on any mismatch.
 set -eu
 
-VERSION="0.5.1"
+VERSION="0.5.2"
 TARBALL="nephew-v${VERSION}.tar.gz"
 # The tarball's sha256, written into the published copy of this script by
 # the release build. SHA256SUMS is fetched from the same place as the
 # tarball, so on its own it only proves the download arrived intact;
 # this pin ties the installer the user read to the bytes it installs.
-PINNED_SHA256="92e7fa272ddf394efe58699d80f447feb92ca6af7eda717a91fabf0be6291b76"
+PINNED_SHA256="004b58b9d335fd7c54894309a9984218935a757e62818f15caf6da2f935cabbc"
 BASE="${NEPHEW_INSTALL_BASE:-https://nephew.ai/releases}"
 APP_DIR="${NEPHEW_HOME:-$HOME/.local/lib/nephew}"
 BIN_DIR="${NEPHEW_INSTALL_DIR:-$HOME/.local/bin}"

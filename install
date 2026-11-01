@@ -6,20 +6,27 @@
 # Nothing else is written. No sudo. Fails closed on any mismatch.
 set -eu
 
-VERSION="0.4.1"
+VERSION="0.4.2"
 TARBALL="nephew-v${VERSION}.tar.gz"
+# The tarball's sha256, written into the published copy of this script by
+# the release build. SHA256SUMS is fetched from the same place as the
+# tarball, so on its own it only proves the download arrived intact;
+# this pin ties the installer the user read to the bytes it installs.
+PINNED_SHA256="7193e03b265efe32d9874524ded820092fdac191e388b2172ee8966fa657d960"
 BASE="${NEPHEW_INSTALL_BASE:-https://nephew.ai/releases}"
 APP_DIR="${NEPHEW_HOME:-$HOME/.local/lib/nephew}"
 BIN_DIR="${NEPHEW_INSTALL_DIR:-$HOME/.local/bin}"
 
-# The CLI is TypeScript executed by Node's type stripping: Node >= 22.
+# The CLI is TypeScript executed by Node's type stripping, on by default
+# from Node 22.18 (and 23.6): earlier 22.x installs fail at first run.
 if ! command -v node >/dev/null 2>&1; then
-  echo "nephew: Node.js >= 22 is required but was not found on PATH" >&2
+  echo "nephew: Node.js >= 22.18 is required but was not found on PATH" >&2
   exit 1
 fi
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
-if [ "$NODE_MAJOR" -lt 22 ]; then
-  echo "nephew: Node.js >= 22 is required (found $(node --version))" >&2
+NODE_MINOR="$(node -p 'process.versions.node.split(".")[1]')"
+if [ "$NODE_MAJOR" -lt 22 ] || { [ "$NODE_MAJOR" -eq 22 ] && [ "$NODE_MINOR" -lt 18 ]; }; then
+  echo "nephew: Node.js >= 22.18 is required (found $(node --version))" >&2
   exit 1
 fi
 
@@ -35,6 +42,13 @@ if [ -z "${EXPECTED}" ]; then
   echo "nephew: SHA256SUMS has no entry for ${TARBALL} — refusing to install" >&2
   exit 1
 fi
+case "${PINNED_SHA256}" in
+  "{{"*) ;; # an unbuilt copy of this script (the repo's template) carries no pin
+  "${EXPECTED}") ;;
+  *)
+    echo "nephew: SHA256SUMS (${EXPECTED}) disagrees with the sha256 pinned in this installer (${PINNED_SHA256}) — refusing to install" >&2
+    exit 1 ;;
+esac
 if command -v sha256sum >/dev/null 2>&1; then
   ACTUAL="$(sha256sum "${WORK}/${TARBALL}" | awk '{print $1}')"
 else

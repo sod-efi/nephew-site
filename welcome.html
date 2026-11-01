@@ -205,13 +205,19 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
 .notify-msg{margin:-4px 0 0;font-size:.92rem;color:var(--bad)}
 .notify-msg.done{margin:auto 0 0;padding-top:6px;color:var(--fg)}
 .notify-msg:focus{outline:none}
-/* Mockup 2026-11-01: Start free and Get BYO. Both sit at the card's foot, level with the Notify me boxes. */
+/* Start free and Get BYO (owner approved the mockup, 2026-11-01). Get BYO shows only once the billing service named in
+   #pricing[data-billing] says checkout is open (GET /config), so a page without a shop never shows a dead button. */
 .plan.buy{display:flex;flex-direction:column}
-.plan-cta{display:flex;align-items:center;justify-content:center;margin-top:auto;padding-top:6px}
-.plan-cta a{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--amber-ink);font:inherit;font-size:.92rem;font-weight:700;text-decoration:none}
-.plan-cta a:hover{border-color:var(--amber)}
-.plan-cta a.primary{background:var(--amber);border-color:var(--amber);color:#1A1406}
-.plan-cta a.primary:hover{filter:brightness(1.06)}
+.plan-cta{display:grid;gap:6px;margin-top:auto;padding-top:6px}
+.plan-cta[hidden]{display:none}
+.plan-cta a,.plan-cta button{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--amber-ink);font:inherit;font-size:.92rem;font-weight:700;text-decoration:none;cursor:pointer}
+.plan-cta a:hover,.plan-cta button:hover{border-color:var(--amber)}
+.plan-cta .primary{background:var(--amber);border-color:var(--amber);color:#1A1406}
+.plan-cta .primary:hover{filter:brightness(1.06)}
+.plan-cta .primary:disabled{opacity:.7;cursor:default}
+.cta-msg{margin:0;font-size:.92rem;color:var(--bad)}
+.cta-msg[hidden]{display:none}
+/* Start free lands on the install box below the sticky header, and flashes it. */
 .install{scroll-margin-top:calc(var(--top-h) + 24px)}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 .install.flash{animation:flash 1.6s ease-out}
@@ -228,11 +234,14 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
 @media (prefers-reduced-motion: reduce){.tag,.state{transition:none}}
 </style>
 <style>
-/* Welcome: one idea, the key and the command that uses it. */
+/* Welcome: one idea, the key and the command that uses it. The page asks the billing service (main[data-billing]) for
+   the key by the Checkout session in the address; while Stripe is still confirming, it waits and asks again. */
 .welcome{padding-block:clamp(28px,6vw,64px) 24px;max-width:620px}
 .welcome h1{margin:0 0 10px;font-family:var(--font-display);font-weight:800;font-size:clamp(1.9rem,4.5vw,3rem);line-height:1.02;letter-spacing:-0.03em}
 .welcome .lede{margin:0 0 26px}
 .welcome .lede b{color:var(--fg);font-weight:600}
+.welcome .lede a{color:var(--amber-ink)}
+.welcome [hidden]{display:none}
 .keybox{display:grid;gap:8px;margin-bottom:28px}
 .keybox .label{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-2)}
 .install.key code{font-size:1.05rem;letter-spacing:.04em;padding:14px 16px}
@@ -243,8 +252,6 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
 .steps .what small{display:block;font-weight:400;color:var(--muted);font-size:.88rem;margin-top:2px}
 .manage{margin-top:8px;font-size:.92rem;color:var(--fg-2)}
 .manage a{color:var(--amber-ink)}
-.buy-msg{margin:10px 0 0;font-size:.92rem;color:var(--bad,#F08A84)}
-.buy-msg[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -257,18 +264,18 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
     <nav class="nav" aria-label="Site"><a href="/#pricing">Pricing</a><a href="/help.html">Help</a></nav>
   </div>
 </header>
-<main id="top">
-  <section class="wrap welcome" id="welcome" data-billing="https://nephew-billing-production.up.railway.app">
-    <div id="w-pending">
-      <h1>Setting up your plan…</h1>
-      <p class="lede">Stripe has your payment. Your licence key lands here in a few seconds — this page checks on its own, so there’s no need to reload.</p>
+<main id="top" data-billing="https://nephew-billing-production.up.railway.app">
+  <section class="wrap welcome" aria-live="polite">
+    <div id="w-wait">
+      <h1>Finishing up…</h1>
+      <p class="lede">Stripe is confirming your payment. This takes a few seconds.</p>
     </div>
     <div id="w-ready" hidden>
       <h1>You’re on BYO.</h1>
-      <p class="lede" id="w-lede"></p>
+      <p class="lede">10 profiles, 3 runs at a time, on your own cloud accounts. <span id="w-mail" hidden>We’ve emailed your key to <b id="w-email"></b>; your receipt comes from Stripe.</span><span id="w-mailing" hidden>We’re emailing your key to <b id="w-email2"></b>; your receipt comes from Stripe.</span><span id="w-nomail" hidden>Keep this key somewhere safe; your receipt comes from Stripe.</span></p>
       <div class="keybox">
-        <span class="label">Licence key</span>
-        <div class="install key"><code id="key"></code><button class="copy" type="button" data-copy="#key" aria-label="Copy licence key">Copy</button></div>
+        <span class="label" id="key-label">Licence key</span>
+        <div class="install key"><code id="key" aria-labelledby="key-label"></code><button class="copy" type="button" data-copy="#key" aria-label="Copy licence key">Copy</button></div>
       </div>
       <ol class="steps" role="list">
         <li><span class="what">Install Nephew <small>Skip this if it’s already on your machine.</small></span>
@@ -277,15 +284,20 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
           <div class="install"><code id="login-cmd"><span class="p" aria-hidden="true">$</span>nephew login <span id="login-key"></span></code><button class="copy" type="button" data-copy="#login-cmd" aria-label="Copy login command">Copy</button></div></li>
       </ol>
       <p class="fineprint">Then <span class="chip"><code id="next-cmd">nephew init</code><button class="copy-ico" type="button" data-copy="#next-cmd" aria-label="Copy command" title="Copy"><svg class="i-copy" viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 3.5v-.4A1.6 1.6 0 0 0 8.9 1.5H3.1A1.6 1.6 0 0 0 1.5 3.1v5.8a1.6 1.6 0 0 0 1.6 1.6h.4"/></svg><svg class="i-ok" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg></button></span> to connect your own cloud&nbsp;accounts.</p>
-      <p class="manage">Change your card or cancel any time: <a href="#" id="manage-link">manage your plan</a>.</p>
-      <p class="buy-msg" id="manage-msg" role="alert" hidden></p>
+      <p class="manage">Change your card or cancel any time: <a href="/#pricing" id="manage">manage your plan</a>.</p>
     </div>
-    <div id="w-problem" hidden>
-      <h1 id="w-problem-h">Something went wrong.</h1>
-      <p class="lede" id="w-problem-p"></p>
-      <p class="manage"><a href="/#pricing">Back to pricing</a></p>
+    <div id="w-unknown" hidden>
+      <h1>We couldn’t find this purchase.</h1>
+      <p class="lede">If you just paid, wait a few seconds and reload. Otherwise, <a href="/#pricing">back to pricing</a>.</p>
     </div>
-    <p class="sr" id="w-live" aria-live="polite"></p>
+    <div id="w-failed" hidden>
+      <h1>The payment didn’t go through.</h1>
+      <p class="lede">Nothing was charged. <a href="/#pricing">Back to pricing</a> to try again.</p>
+    </div>
+    <div id="w-down" hidden>
+      <h1>One moment.</h1>
+      <p class="lede">We can’t reach the key server right now. Reload in a minute; this address keeps working, so keep it.</p>
+    </div>
   </section>
 </main>
 <footer class="foot">
@@ -293,17 +305,48 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
     <span class="wordmark">nephew<span class="tld">.ai</span></span>
     <a href="/help.html">Help</a>
     <a href="/install">Install script</a>
-    <a href="/releases/nephew-v0.4.2.tar.gz">Release v0.4.2</a>
+    <a href="/releases/nephew-v0.5.0.tar.gz">Release v0.5.0</a>
     <a href="/releases/SHA256SUMS">SHA256SUMS</a>
     <a href="/llms.txt">llms.txt</a>
     <a href="/nephew.json">nephew.json</a>
   </div>
 </footer>
 <script>
-// Copy buttons, as on the landing page.
 (function(){
   'use strict';
-  function text(sel){var el=document.querySelector(sel);return el.textContent.replace(/^\$\s*/,'').replace(/\s+/g,' ').trim();}
+  var base=document.querySelector('main').getAttribute('data-billing');
+  var session=new URLSearchParams(location.search).get('session')||'';
+  var el=function(id){return document.getElementById(id);};
+  var show=function(id){['w-wait','w-ready','w-unknown','w-failed','w-down'].forEach(function(x){el(x).hidden=x!==id;});};
+  var timeout=function(ms){return window.AbortSignal&&AbortSignal.timeout?AbortSignal.timeout(ms):undefined;};
+  if(!session||!/^cs_[A-Za-z0-9_]+$/.test(session)||!window.fetch){show('w-unknown');return;}
+  var tries=0;
+  function poll(){
+    fetch(base+'/welcome?session='+encodeURIComponent(session),{signal:timeout(10000)})
+      .then(function(r){return r.json().catch(function(){return {};}).then(function(b){return {status:r.status,body:b};});})
+      .then(function(res){
+        var b=res.body||{};
+        if(res.status===200&&b.status==='ready'){
+          el('key').textContent=b.key;el('login-key').textContent=b.key;
+          if(b.emailed&&b.email){el('w-email').textContent=b.email;el('w-mail').hidden=false;}
+          else if(b.emailing&&b.email){el('w-email2').textContent=b.email;el('w-mailing').hidden=false;}
+          else el('w-nomail').hidden=false;
+          show('w-ready');return;
+        }
+        if(res.status===200&&b.status==='pending'){if(++tries<30)setTimeout(poll,2000);else show('w-unknown');return;}
+        if(res.status===200&&b.status==='failed'){show('w-failed');return;}
+        if(res.status===404||res.status===400){show('w-unknown');return;}
+        show('w-down');
+      },function(){show('w-down');});
+  }
+  poll();
+  el('manage').addEventListener('click',function(e){
+    e.preventDefault();var a=this;a.textContent='opening…';
+    fetch(base+'/portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:session}),signal:timeout(12000)})
+      .then(function(r){return r.json();}).then(function(b){if(b&&b.url){location.assign(b.url);return;}a.textContent='manage your plan';},function(){a.textContent='manage your plan';});
+  });
+  // Copy buttons, as on the landing page.
+  function text(sel){return document.querySelector(sel).textContent.replace(/^\$\s*/,'').replace(/\s+/g,' ').trim();}
   Array.prototype.forEach.call(document.querySelectorAll('[data-copy]'),function(btn){
     btn.addEventListener('click',function(){
       var t=text(btn.getAttribute('data-copy'));
@@ -312,82 +355,6 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
     });
   });
   Array.prototype.forEach.call(document.querySelectorAll('.chip'),function(chip){chip.addEventListener('click',function(e){if(e.target.closest('.copy-ico'))return;chip.querySelector('.copy-ico').click();});});
-})();
-</script>
-<script>
-// Welcome: reads ?session= and polls the billing service named in #welcome[data-billing] (GET /welcome)
-// until the checkout settles. Pending keeps checking; ready shows the licence key, the plan and where the
-// key went; failed, unknown and the service's other answers each get their own honest state — nothing
-// here invents a key or claims an email that wasn't sent. "Manage your plan" posts the same session to
-// /portal and follows Stripe's customer-portal URL. The service is nephew-billing (its own repo).
-(function(){
-  'use strict';
-  var sec=document.getElementById('welcome'),base=sec&&sec.getAttribute('data-billing');
-  var pending=document.getElementById('w-pending'),readyEl=document.getElementById('w-ready'),problem=document.getElementById('w-problem');
-  var live=document.getElementById('w-live');
-  function show(el){[pending,readyEl,problem].forEach(function(x){x.hidden=x!==el;});}
-  function fail(h,p){
-    document.getElementById('w-problem-h').textContent=h;
-    document.getElementById('w-problem-p').textContent=p;
-    show(problem);live.textContent=h;
-  }
-  var session=null;
-  try{session=new URLSearchParams(window.location.search).get('session');}catch(e){}
-  if(!base||!window.fetch){fail('We can’t check your checkout from this browser.','If you just paid, keep the receipt Stripe emailed you — it identifies the payment.');return;}
-  if(!session){fail('No checkout to show.','This page picks up right after a purchase, from the link Stripe sends you back with. If you just paid, use that link.');return;}
-  base=base.replace(/\/+$/,'');
-  var tries=0,timer=0;
-  function ready(b){
-    var lede=document.getElementById('w-lede');
-    lede.textContent='10 profiles, 3 runs at a time, on your own cloud accounts.';
-    if(b.email&&(b.emailed||b.emailing)){
-      lede.appendChild(document.createTextNode(b.emailed?' We’ve emailed your key to ':' Your key is on its way to '));
-      var bold=document.createElement('b');bold.textContent=b.email;lede.appendChild(bold);
-      lede.appendChild(document.createTextNode('; your receipt comes from Stripe.'));
-    }else{
-      lede.appendChild(document.createTextNode(' Your receipt comes from Stripe. Keep this key — it is your plan.'));
-    }
-    document.getElementById('key').textContent=b.key;
-    document.getElementById('login-key').textContent=b.key;
-    show(readyEl);live.textContent='Your licence key is ready.';
-    var link=document.getElementById('manage-link'),mmsg=document.getElementById('manage-msg');
-    link.addEventListener('click',function(e){
-      e.preventDefault();mmsg.hidden=true;link.style.pointerEvents='none';
-      fetch(base+'/portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:session})})
-        .then(function(r){return r.json().catch(function(){return {};});})
-        .then(function(pb){
-          if(pb&&pb.url){window.location.href=pb.url;return;}
-          link.style.pointerEvents='';mmsg.textContent='The portal didn’t open. Try again in a minute.';mmsg.hidden=false;
-        },function(){link.style.pointerEvents='';mmsg.textContent='The portal didn’t open. Try again in a minute.';mmsg.hidden=false;});
-    });
-  }
-  function poll(){
-    tries++;
-    fetch(base+'/welcome?session='+encodeURIComponent(session)).then(function(r){
-      return r.json().catch(function(){return {};}).then(function(b){return {status:r.status,body:b};});
-    }).then(function(res){
-      var s=res.body&&res.body.status;
-      if(s==='ready'&&res.body.key){ready(res.body);return;}
-      if(s==='pending'){
-        if(tries>=45){fail('Still setting up.','Stripe is taking longer than usual to confirm this payment. Reload this page in a minute — the same link keeps working.');return;}
-        timer=setTimeout(poll,2000);return;
-      }
-      if(s==='failed'){fail('That payment didn’t go through.','No charge was made. You can try again from the pricing page.');return;}
-      if(s==='unknown'){fail('We can’t find that checkout.','The link looks incomplete or belongs to a different checkout. If you just paid, use the full link Stripe sent you back with.');return;}
-      if(s==='not_configured'){fail('Checkout isn’t open right now.','If a payment just went through, keep the receipt Stripe emailed you — it identifies the payment.');return;}
-      if(s==='slow_down'){
-        if(tries>=45){fail('Still setting up.','Reload this page in a minute — the same link keeps working.');return;}
-        timer=setTimeout(poll,5000);return;
-      }
-      // stripe_error or an unreadable answer: a few quiet retries, then say so.
-      if(tries<8){timer=setTimeout(poll,3000);return;}
-      fail('We couldn’t confirm your checkout.','Stripe may be having a moment. Reload this page in a minute — the same link keeps working.');
-    },function(){
-      if(tries<8){timer=setTimeout(poll,3000);return;}
-      fail('We couldn’t reach the billing service.','Check your connection, then reload this page — the same link keeps working.');
-    });
-  }
-  poll();
 })();
 </script>
 </body>

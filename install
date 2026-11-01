@@ -12,7 +12,7 @@ TARBALL="nephew-v${VERSION}.tar.gz"
 # the release build. SHA256SUMS is fetched from the same place as the
 # tarball, so on its own it only proves the download arrived intact;
 # this pin ties the installer the user read to the bytes it installs.
-PINNED_SHA256="7193e03b265efe32d9874524ded820092fdac191e388b2172ee8966fa657d960"
+PINNED_SHA256="349cb3a189633e8d55c1929fe4537b18146eb75aa1e793864c76f6fbe321e1cc"
 BASE="${NEPHEW_INSTALL_BASE:-https://nephew.ai/releases}"
 APP_DIR="${NEPHEW_HOME:-$HOME/.local/lib/nephew}"
 BIN_DIR="${NEPHEW_INSTALL_DIR:-$HOME/.local/bin}"

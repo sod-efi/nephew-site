@@ -225,6 +225,9 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
 .install:focus{outline:none}
 .pricing .notes{margin-top:22px;display:grid;gap:4px;font-size:.92rem;color:var(--fg-2)}
 .pricing .notes a{color:var(--amber-ink)}
+.proof{padding-block:clamp(32px,5vw,56px) 8px}
+.proof h2{margin:0 0 10px;font-family:var(--font-display);font-weight:800;font-size:clamp(1.6rem,3vw,2.4rem);line-height:1.02;letter-spacing:-0.03em}
+.proof ul{margin:0;padding-left:1.2em;display:grid;gap:7px;max-width:46em;color:var(--fg-2);text-wrap:pretty}
 
 /* Footer: the payload's links, exactly as the install flow names them. */
 .foot{margin-top:56px;border-top:1px solid var(--line)}
@@ -255,7 +258,7 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
 
   <section class="wrap hero">
     <h1>Bring your login, device&nbsp;identity, and&nbsp;IP to any sandbox</h1>
-    <p class="lede">Profile, fingerprint coherence, pinned egress.</p>
+    <p class="lede">Sign in once. Hand the session to your agent. It stays signed in.</p>
     <div class="hero-install">
       <div class="install" id="install">
         <code id="install-cmd"><span class="p" aria-hidden="true">$</span>curl -fsSL https://nephew.ai/install <span class="nb">| sh</span></code>
@@ -312,6 +315,15 @@ p code{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;pad
       <p>One dedicated IP per identity, per-profile by design.</p>
       <p>We never store your keys. See <a href="/help.html#plans">Help</a> for the details.</p>
     </div>
+  </section>
+
+  <section class="wrap proof" aria-labelledby="proof-h">
+    <h2 id="proof-h">Measured proof</h2>
+    <ul>
+  <li>Same profile, this machine vs a Modal sandbox: <strong>identical fingerprints — all 10 measured elements, canvas included</strong> — with the pinned font pack in both environments.</li>
+  <li>Baseline restores: <strong>~6.4 s</strong> on Steel, <strong>~7.8 s</strong> on Browser Use, <strong>~5.7 s</strong> on Browserbase; full Modal runs <strong>10–27 s</strong> in-session.</li>
+  <li><strong>0 login prompts, 0 MFA prompts</strong> across the Steel, Browser Use, Modal, and Browserbase proof runs.</li>
+    </ul>
   </section>
 
 </main>
